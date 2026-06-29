@@ -1,0 +1,103 @@
+================================================================
+  SecureChain Diploma Verifier (SCDV) — CARA PAKAI
+  Keamanan & Blockchain: C++   |   Tampilan GUI: Python
+================================================================
+
+Yang sudah terdeteksi di komputer Anda (semua siap):
+  [+] g++ 15.2.0 (MinGW)      -> compiler C++
+  [+] OpenSSL 3.6.1 (dev)     -> enkripsi/hash
+  [+] Python 3.10 + pip       -> GUI
+
+TIDAK perlu CMake. TIDAK perlu Visual Studio.
+
+
+----------------------------------------------------------------
+LANGKAH 1 — Build inti C++ (sekali saja)
+----------------------------------------------------------------
+Double-click:  BUILD.bat
+   (atau di Git Bash:  bash build_gcc.sh)
+
+Hasil: scdv_verifier.exe  (sudah static/portabel)
+
+
+----------------------------------------------------------------
+LANGKAH 2 — Install dependency GUI (sekali saja)
+----------------------------------------------------------------
+Double-click:  install_deps.bat
+   (memasang pypdf + reportlab)
+
+
+----------------------------------------------------------------
+LANGKAH 3 — Jalankan aplikasi
+----------------------------------------------------------------
+Double-click:  RUN.bat
+   (atau:  python gui\app.py)
+
+
+================================================================
+ALUR PEMAKAIAN
+================================================================
+
+A) PIHAK KAMPUS — Mendaftarkan ijazah
+   Tab "Kampus — Daftarkan":
+   1. Pilih file PDF ijazah (polos, tanpa cap).
+      - Belum punya? Klik "Buat PDF Contoh".
+   2. Isi: Kode Unik (mis. UGM-010203-HUDZAIFAH), Nama, NIM.
+   3. Klik "Daftarkan & Amankan".
+
+   Sistem otomatis:
+   - Memberi CAP visual berisi kode unik pada PDF.
+   - Menyisipkan METADATA + TANDA TANGAN DIGITAL (HMAC-SHA256).
+   - MENGUNCI PDF dengan password = kode unik (AES-256 native PDF).
+   - Mencatat SHA-256 file ke BLOCKCHAIN (inti C++).
+
+   Output: file  <nama>_SECURED.pdf
+   -> Berikan file ini ke mahasiswa. File HANYA bisa dibuka
+      dengan kode unik (diminta saat dibuka di Adobe/Chrome/dll).
+
+
+B) PUBLIK / MAHASISWA — Memverifikasi
+   Tab "Verifikasi":
+   1. Pilih file *_SECURED.pdf.
+   2. Masukkan Kode Unik.
+   3. Klik "Verifikasi Sekarang".
+
+   Hasil:
+   - HIJAU  "IJAZAH ASLI"  -> hash cocok + kode benar (Double-Lock lolos),
+            tampil Nama, NIM, waktu daftar.
+   - MERAH  "TIDAK VALID"  -> file diubah / kode salah / tak terdaftar.
+
+
+================================================================
+KENAPA AMAN (Double-Lock)
+================================================================
+  Lock 1 (Integritas): SHA-256 file. Ubah 1 byte -> verifikasi GAGAL.
+  Lock 2 (Kepemilikan): kode unik dienkripsi AES-256 di blockchain.
+                        Plus: PDF terkunci, tak bisa dibuka tanpa kode.
+  Immutability: blockchain linked-hash. Ubah block lama -> chain rusak.
+
+  Cek integritas chain kapan saja: tombol "Cek Integritas Blockchain".
+
+
+================================================================
+STRUKTUR FILE
+================================================================
+  src/ , include/        inti C++ (blockchain, crypto, dokumen)
+  scdv_verifier.exe      hasil build C++ (dipanggil GUI)
+  gui/app.py             GUI Tkinter (tampilan)
+  gui/pdf_secure.py      cap + kunci PDF + tanda tangan
+  gui/scdv_core.py       jembatan GUI -> exe C++
+  data/blockchain.json   ledger (otomatis dibuat)
+
+  BUILD.bat / build_gcc.sh   build C++
+  install_deps.bat           install dependency GUI
+  RUN.bat                    jalankan aplikasi
+
+
+================================================================
+CATATAN PRODUKSI
+================================================================
+  Ganti kunci rahasia sebelum produksi:
+  - C++ : MASTER_KEY di src/main.cpp
+  - PDF : CAMPUS_SIGNING_KEY di gui/pdf_secure.py
+  Buat kunci kuat:  openssl rand -base64 32
