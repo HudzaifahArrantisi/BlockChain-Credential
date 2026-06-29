@@ -96,7 +96,7 @@ Atau manual: `python gui/app.py`
 **Langkah 3: Isi Data Mahasiswa**
 ```
 Kode Unik        : UGM-010203-HUDZAIFAH  (format: KAMPUS-NIM-NAMA)
-Nama Mahasiswa   : Hudzaifah Rahman
+Nama Mahasiswa   : Hudzaifah 
 NIM              : 010203
 ```
 
