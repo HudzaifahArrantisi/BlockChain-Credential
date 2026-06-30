@@ -1,14 +1,10 @@
-"""
-Jembatan ke inti C++ (scdv_verifier.exe).
-Semua operasi blockchain/hash/enkripsi-label dikerjakan oleh C++ — modul ini
-hanya memanggil exe dan mem-parse output KEY=VALUE-nya.
-"""
+import json
 import os
 import subprocess
 
-# Root proyek = folder induk dari folder gui/
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXE = os.path.join(ROOT, "scdv_verifier.exe")
+BLOCKCHAIN_FILE = os.path.join(ROOT, "data/blockchain.json")
 
 
 class CoreError(Exception):
@@ -24,7 +20,7 @@ def _run(args):
     proc = subprocess.run(
         [EXE] + args,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
-        cwd=ROOT,  # penting: C++ baca/tulis data/blockchain.json relatif ke root
+        cwd=ROOT,
     )
     data = {}
     for line in proc.stdout.splitlines():
@@ -35,16 +31,48 @@ def _run(args):
     return data
 
 
-def register(pdf_path, code, name, student_id):
-    """Daftarkan PDF (yang sudah diamankan) ke blockchain via C++."""
+def register(pdf_path, code, name, student_id, details=""):
+    if details:
+        return _run(["register", pdf_path, code, name, student_id, details])
     return _run(["register", pdf_path, code, name, student_id])
 
 
 def verify(pdf_path, code):
-    """Verifikasi PDF + kode unik via C++. -> dict berisi STATUS, NAME, ID, TIME."""
     return _run(["verify", pdf_path, code])
 
 
+def find_by_label(code):
+    return _run(["find", code])
+
+
+def find_by_student(name, student_id):
+    try:
+        return _run(["find_student", name, student_id])
+    except Exception:
+        return _find_by_student_py(name, student_id)
+
+
+def _find_by_student_py(name, student_id):
+    if not os.path.exists(BLOCKCHAIN_FILE):
+        return {"STATUS": "ERROR", "MESSAGE": "blockchain.json not found"}
+    try:
+        with open(BLOCKCHAIN_FILE, 'r') as f:
+            data = json.load(f)
+        for block in data.get("blocks", []):
+            if (block.get("student_name", "").lower() == name.lower()
+                    and block.get("student_id", "") == student_id):
+                return {
+                    "STATUS": "FOUND",
+                    "NAME": block["student_name"],
+                    "ID": block["student_id"],
+                    "TIME": block.get("timestamp", ""),
+                    "HASH": block.get("file_hash", ""),
+                    "DETAILS": "",  # encrypted_details can't be decrypted without C++
+                }
+        return {"STATUS": "NOT_FOUND"}
+    except Exception as e:
+        return {"STATUS": "ERROR", "MESSAGE": str(e)}
+
+
 def validate():
-    """Validasi integritas seluruh chain via C++."""
     return _run(["validate"])

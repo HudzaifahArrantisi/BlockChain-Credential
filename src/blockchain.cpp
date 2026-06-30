@@ -14,7 +14,8 @@ json Block::to_json() const {
         {"student_name", student_name},
         {"student_id", student_id},
         {"timestamp", timestamp},
-        {"block_hash", block_hash}
+        {"block_hash", block_hash},
+        {"encrypted_details", encrypted_details}
     };
 }
 
@@ -28,6 +29,7 @@ Block Block::from_json(const json& j) {
     b.student_id = j["student_id"];
     b.timestamp = j["timestamp"];
     b.block_hash = j["block_hash"];
+    b.encrypted_details = j.value("encrypted_details", "");
     return b;
 }
 
@@ -43,14 +45,16 @@ std::string StrictBlockchain::get_last_block_hash() const {
 std::string StrictBlockchain::calculate_block_hash(const Block& block) const {
     std::string data = block.index + block.previous_hash + block.file_hash +
                       block.encrypted_label + block.student_name +
-                      block.student_id + block.timestamp;
+                      block.student_id + block.timestamp +
+                      block.encrypted_details;
     return CryptoUtils::sha256(data);
 }
 
 Block StrictBlockchain::create_block(const std::string& file_hash,
                                     const std::string& encrypted_label,
                                     const std::string& student_name,
-                                    const std::string& student_id) {
+                                    const std::string& student_id,
+                                    const std::string& encrypted_details) {
     Block block;
     block.index = std::to_string(chain.size());
     block.previous_hash = get_last_block_hash();
@@ -58,6 +62,7 @@ Block StrictBlockchain::create_block(const std::string& file_hash,
     block.encrypted_label = encrypted_label;
     block.student_name = student_name;
     block.student_id = student_id;
+    block.encrypted_details = encrypted_details;
 
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
@@ -72,9 +77,14 @@ Block StrictBlockchain::create_block(const std::string& file_hash,
 void StrictBlockchain::register_diploma(const std::string& file_hash,
                                        const std::string& unique_label,
                                        const std::string& student_name,
-                                       const std::string& student_id) {
+                                       const std::string& student_id,
+                                       const std::string& details) {
     std::string encrypted_label = CryptoUtils::aes256_encrypt(unique_label, master_key);
-    Block new_block = create_block(file_hash, encrypted_label, student_name, student_id);
+    std::string encrypted_details = "";
+    if (!details.empty()) {
+        encrypted_details = CryptoUtils::aes256_encrypt(details, unique_label);
+    }
+    Block new_block = create_block(file_hash, encrypted_label, student_name, student_id, encrypted_details);
     chain.push_back(new_block);
     std::cout << "[+] Diploma registered: " << student_id << " (" << student_name << ")" << std::endl;
 }
@@ -95,6 +105,29 @@ const Block* StrictBlockchain::verify_and_get(const std::string& file_hash,
         } catch (...) {
             // Skip blocks that fail to decrypt (wrong key/corrupt); keep scanning.
             continue;
+        }
+    }
+    return nullptr;
+}
+
+const Block* StrictBlockchain::find_by_label(const std::string& unique_label) const {
+    for (const auto& block : chain) {
+        try {
+            std::string decrypted_label = CryptoUtils::aes256_decrypt(block.encrypted_label, master_key);
+            if (decrypted_label == unique_label) {
+                return &block;
+            }
+        } catch (...) {
+            continue;
+        }
+    }
+    return nullptr;
+}
+
+const Block* StrictBlockchain::find_by_name_and_id(const std::string& name, const std::string& id) const {
+    for (const auto& block : chain) {
+        if (block.student_name == name && block.student_id == id) {
+            return &block;
         }
     }
     return nullptr;

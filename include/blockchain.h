@@ -16,6 +16,7 @@ struct Block {
     std::string student_id;
     std::string timestamp;
     std::string block_hash;
+    std::string encrypted_details; // NEW
 
     json to_json() const;
     static Block from_json(const json& j);
@@ -28,7 +29,8 @@ public:
     void register_diploma(const std::string& file_hash,
                          const std::string& unique_label,
                          const std::string& student_name,
-                         const std::string& student_id);
+                         const std::string& student_id,
+                         const std::string& details = ""); // UPDATED
 
     bool verify_diploma(const std::string& file_hash,
                        const std::string& unique_label) const;
@@ -36,6 +38,9 @@ public:
     // Returns pointer to matching block (with student data) or nullptr if not verified
     const Block* verify_and_get(const std::string& file_hash,
                                 const std::string& unique_label) const;
+
+    const Block* find_by_label(const std::string& unique_label) const; // NEW
+    const Block* find_by_name_and_id(const std::string& name, const std::string& id) const; // NEW
 
     bool validate_chain() const;
     void load_from_file(const std::string& filepath);
@@ -51,7 +56,8 @@ private:
     Block create_block(const std::string& file_hash,
                       const std::string& encrypted_label,
                       const std::string& student_name,
-                      const std::string& student_id);
+                      const std::string& student_id,
+                      const std::string& encrypted_details = "");
 };
 
 #endif // BLOCKCHAIN_H

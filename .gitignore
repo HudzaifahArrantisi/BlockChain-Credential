@@ -17,3 +17,7 @@ cmake_install.cmake
 Makefile
 data/blockchain.json
 opencode.json
+sample_pdfs/
+secured/
+*.pyc
+__pycache__/

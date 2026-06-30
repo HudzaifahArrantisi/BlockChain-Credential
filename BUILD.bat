@@ -9,7 +9,7 @@ set "OPT=C:\ProgramData\mingw64\mingw64\opt"
 if not exist "%OPT%\lib\libcrypto.a" (
     echo [!] OpenSSL dev ^(libcrypto.a^) tidak ditemukan di %OPT%\lib
     echo     Sesuaikan variabel OPT di file ini bila lokasi MinGW Anda berbeda.
-    pause
+    REM pause
     exit /b 1
 )
 
@@ -23,7 +23,7 @@ echo [*] Compiling scdv_verifier.exe ...
 
 if errorlevel 1 (
     echo [!] Build GAGAL.
-    pause
+    REM pause
     exit /b 1
 )
 
@@ -31,4 +31,4 @@ if not exist data mkdir data
 echo.
 echo [+] BUILD SUKSES -^> scdv_verifier.exe
 echo.
-pause
+REM pause

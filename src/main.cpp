@@ -2,6 +2,7 @@
 #include <string>
 #include "include/blockchain.h"
 #include "include/document_handler.h"
+#include "include/crypto_utils.h"
 
 const std::string BLOCKCHAIN_FILE = "data/blockchain.json";
 const std::string MASTER_KEY = "SecureChain2024!Key@Campus";
@@ -124,12 +125,13 @@ void validate_integrity() {
 // values containing spaces/colons (e.g. student names) are safe to parse.
 
 int cli_register(const std::string& path, const std::string& label,
-                 const std::string& name, const std::string& id) {
+                 const std::string& name, const std::string& id,
+                 const std::string& details = "") {
     StrictBlockchain blockchain(MASTER_KEY);
     blockchain.load_from_file(BLOCKCHAIN_FILE);
     try {
         std::string file_hash = DocumentHandler::compute_file_hash(path);
-        blockchain.register_diploma(file_hash, label, name, id);
+        blockchain.register_diploma(file_hash, label, name, id, details);
         blockchain.save_to_file(BLOCKCHAIN_FILE);
         std::cout << "STATUS=OK\nHASH=" << file_hash << std::endl;
         return 0;
@@ -149,9 +151,70 @@ int cli_verify(const std::string& path, const std::string& label) {
             std::cout << "STATUS=VERIFIED\nNAME=" << b->student_name
                       << "\nID=" << b->student_id
                       << "\nTIME=" << b->timestamp
-                      << "\nHASH=" << file_hash << std::endl;
+                      << "\nHASH=" << file_hash;
+            if (!b->encrypted_details.empty()) {
+                try {
+                    std::string decrypted_details = CryptoUtils::aes256_decrypt(b->encrypted_details, label);
+                    std::cout << "\nDETAILS=" << decrypted_details;
+                } catch (...) {}
+            }
+            std::cout << std::endl;
         } else {
             std::cout << "STATUS=FAILED" << std::endl;
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        std::cout << "STATUS=ERROR\nMESSAGE=" << e.what() << std::endl;
+        return 1;
+    }
+}
+
+int cli_find(const std::string& label) {
+    StrictBlockchain blockchain(MASTER_KEY);
+    blockchain.load_from_file(BLOCKCHAIN_FILE);
+    try {
+        const Block* b = blockchain.find_by_label(label);
+        if (b) {
+            std::cout << "STATUS=FOUND\nNAME=" << b->student_name
+                      << "\nID=" << b->student_id
+                      << "\nTIME=" << b->timestamp
+                      << "\nHASH=" << b->file_hash;
+            if (!b->encrypted_details.empty()) {
+                try {
+                    std::string decrypted_details = CryptoUtils::aes256_decrypt(b->encrypted_details, label);
+                    std::cout << "\nDETAILS=" << decrypted_details;
+                } catch (...) {}
+            }
+            std::cout << std::endl;
+        } else {
+            std::cout << "STATUS=NOT_FOUND" << std::endl;
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        std::cout << "STATUS=ERROR\nMESSAGE=" << e.what() << std::endl;
+        return 1;
+    }
+}
+
+int cli_find_by_student(const std::string& name, const std::string& id) {
+    StrictBlockchain blockchain(MASTER_KEY);
+    blockchain.load_from_file(BLOCKCHAIN_FILE);
+    try {
+        const Block* b = blockchain.find_by_name_and_id(name, id);
+        if (b) {
+            std::cout << "STATUS=FOUND\nNAME=" << b->student_name
+                      << "\nID=" << b->student_id
+                      << "\nTIME=" << b->timestamp
+                      << "\nHASH=" << b->file_hash;
+            if (!b->encrypted_details.empty()) {
+                try {
+                    std::string decrypted = CryptoUtils::aes256_decrypt(b->encrypted_details, b->student_id);
+                    std::cout << "\nDETAILS=" << decrypted;
+                } catch (...) {}
+            }
+            std::cout << std::endl;
+        } else {
+            std::cout << "STATUS=NOT_FOUND" << std::endl;
         }
         return 0;
     } catch (const std::exception& e) {
@@ -171,10 +234,14 @@ int main(int argc, char* argv[]) {
     // Non-interactive CLI mode when arguments are supplied (used by the GUI).
     if (argc > 1) {
         std::string cmd = argv[1];
-        if (cmd == "register" && argc == 6)
-            return cli_register(argv[2], argv[3], argv[4], argv[5]);
+        if (cmd == "register" && (argc == 6 || argc == 7))
+            return cli_register(argv[2], argv[3], argv[4], argv[5], argc == 7 ? argv[6] : "");
         if (cmd == "verify" && argc == 4)
             return cli_verify(argv[2], argv[3]);
+        if (cmd == "find" && argc == 3)
+            return cli_find(argv[2]);
+        if (cmd == "find_student" && argc == 4)
+            return cli_find_by_student(argv[2], argv[3]);
         if (cmd == "validate")
             return cli_validate();
         std::cout << "STATUS=ERROR\nMESSAGE=Invalid CLI usage" << std::endl;

@@ -1,9 +1,1055 @@
 {
+  "5000136513": {
+    "name": "Eko Kurniawan",
+    "code": "UH-136513-EKOKURNIAW",
+    "hash": "dd2af2e35c1ba401601a048d686eed0849e6ef3f3818c164dcab4381cc2fd795",
+    "signature": "e95416b00b589b6fe0d6c86e9bbc29e0b893f62ad3a09945d622677b7cf92de0",
+    "timestamp": "2026-06-29T19:53:43.875308",
+    "secured_file": "dd2af2e35c1ba401601a048d686eed0849e6ef3f3818c164dcab4381cc2fd795.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Teknik Sipil"
+  },
+  "6585051171": {
+    "name": "Bella Sutanto",
+    "code": "ITB-051171-BELLASUTAN",
+    "hash": "8417c27f7381c5795f8f9652fda8c13365b17c5bd4253e22e66df330c82342c3",
+    "signature": "38d8b8c7b0a1465bbe1b7b06d4a30d9a0c3602ea94ce5210fbc85a04b1ae5d4d",
+    "timestamp": "2026-06-29T19:53:44.305411",
+    "secured_file": "8417c27f7381c5795f8f9652fda8c13365b17c5bd4253e22e66df330c82342c3.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Teknik Informatika"
+  },
+  "4607294963": {
+    "name": "Candra Susanto",
+    "code": "UGM-294963-CANDRASUSA",
+    "hash": "55608d48b232f2b7ee67410dc3fdc6445453703519634c91a6392fe3b36c791b",
+    "signature": "a02a42539ff39e90e914a8893739073ffe9f4ffebe8b0fd3024c4f82df0f1a1a",
+    "timestamp": "2026-06-29T19:53:44.761018",
+    "secured_file": "55608d48b232f2b7ee67410dc3fdc6445453703519634c91a6392fe3b36c791b.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Akuntansi"
+  },
+  "9445371205": {
+    "name": "Umar Gunawan",
+    "code": "UP-371205-UMARGUNAWA",
+    "hash": "a1f961780011c7b793108f292f2d0b26d146fe0e106511672c85147ae9d987ad",
+    "signature": "9cb92b9184fd29a5b0e6fe9fb59f59e8f8d2aeb5a4e7d4750fc49b70c6359788",
+    "timestamp": "2026-06-29T19:53:45.376245",
+    "secured_file": "a1f961780011c7b793108f292f2d0b26d146fe0e106511672c85147ae9d987ad.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Sipil"
+  },
+  "2007528085": {
+    "name": "Maya Nugroho",
+    "code": "ITB-528085-MAYANUGROH",
+    "hash": "3af595be080caac5d5a51a34f7eb72749075eb957029c41cf0ab91ac0f3f72b6",
+    "signature": "a0f0217398656087c3c6180887c9917d59c7d9b43423573ac2f2c7bdca257d4a",
+    "timestamp": "2026-06-29T19:53:45.883980",
+    "secured_file": "3af595be080caac5d5a51a34f7eb72749075eb957029c41cf0ab91ac0f3f72b6.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Teknik Mesin"
+  },
+  "8197318625": {
+    "name": "Tono Gunawan",
+    "code": "UP-318625-TONOGUNAWA",
+    "hash": "eeed0f0229d1bd83c160742e4ac294116dacc2393a254af8eddd6a42d99610a1",
+    "signature": "28653c6946a19dbf00bcd9e4e4979dfda16951405523b977a2ed8b2857a25f59",
+    "timestamp": "2026-06-29T19:53:46.217652",
+    "secured_file": "eeed0f0229d1bd83c160742e4ac294116dacc2393a254af8eddd6a42d99610a1.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Hukum"
+  },
+  "8006655558": {
+    "name": "Ahmad Arifin",
+    "code": "UI-655558-AHMADARIFI",
+    "hash": "90a0bee539399ba3c5fa2233342322cad52889e513993c01394c6449dd6055cc",
+    "signature": "d7fe8aaaffb5687acc39554778e30266cadc417cd3d16e03f9553eaceb9764ed",
+    "timestamp": "2026-06-29T19:53:46.533082",
+    "secured_file": "90a0bee539399ba3c5fa2233342322cad52889e513993c01394c6449dd6055cc.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Pendidikan Matematika"
+  },
+  "6544942926": {
+    "name": "Tono Pramono",
+    "code": "UI-942926-TONOPRAMON",
+    "hash": "c44c8df5403249e3ccfd253cedf991887df4b71f432a0f1b288a10342a4c64b5",
+    "signature": "296a22994e7dc2dc92e6834e1d708c3a814e30d2580e8debaac21a3bce3c417e",
+    "timestamp": "2026-06-29T19:53:46.955738",
+    "secured_file": "c44c8df5403249e3ccfd253cedf991887df4b71f432a0f1b288a10342a4c64b5.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Statistika"
+  },
+  "6918054277": {
+    "name": "Fitri Utama",
+    "code": "UGM-054277-FITRIUTAMA",
+    "hash": "0272da477e8044e4054b79b8e213ae2592721f7be1e8145fd0b08226aa98c59d",
+    "signature": "b41f077c879d79ad6625923bccb54eee3e8b35bebe36295b268e4b0cb78ae63f",
+    "timestamp": "2026-06-29T19:53:47.199329",
+    "secured_file": "0272da477e8044e4054b79b8e213ae2592721f7be1e8145fd0b08226aa98c59d.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Kedokteran"
+  },
+  "1263887234": {
+    "name": "Lukman Utama",
+    "code": "UGM-887234-LUKMANUTAM",
+    "hash": "6f54c88935e541cc7d72a2e5172ed82f32d962fdff5b1fd507acdef374a9f10c",
+    "signature": "4c3e0e2dd1a9106a58fa1f896a0b39ffdd423b4212fa2224a91f4e571f78a7ae",
+    "timestamp": "2026-06-29T19:53:47.402834",
+    "secured_file": "6f54c88935e541cc7d72a2e5172ed82f32d962fdff5b1fd507acdef374a9f10c.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Teknik Sipil"
+  },
+  "5953851936": {
+    "name": "Dewi Cahyono",
+    "code": "UGM-851936-DEWICAHYON",
+    "hash": "240698681536fac374783f865cea0dcafe2dc4567ad319ff205d625995ed56b0",
+    "signature": "ed9726e03e596c18fa4d8212658d93bf1ee310f6fc759570450f9c7a32018a15",
+    "timestamp": "2026-06-29T19:53:47.585945",
+    "secured_file": "240698681536fac374783f865cea0dcafe2dc4567ad319ff205d625995ed56b0.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Kedokteran"
+  },
+  "7914442683": {
+    "name": "Zaki Santoso",
+    "code": "UGM-442683-ZAKISANTOS",
+    "hash": "debcf4dfcaadbbeefd501b8720a7baccd938d6a1ce113d8c26b951a7e4fb7ba8",
+    "signature": "8527f3f99d4142aba90ad38a8f8115596573278fed793af8960d6a89de114f77",
+    "timestamp": "2026-06-29T19:53:47.989367",
+    "secured_file": "debcf4dfcaadbbeefd501b8720a7baccd938d6a1ce113d8c26b951a7e4fb7ba8.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Kimia"
+  },
+  "2284738418": {
+    "name": "Xander Pramono",
+    "code": "UB-738418-XANDERPRAM",
+    "hash": "24df872e0d3ce7dfd83b44b782d903c93cf902460e414fa21271dc86035b9fb7",
+    "signature": "8e70b440abb229e9ec8ca84856688af98c3cd5e16020cc4914a364708ad5496c",
+    "timestamp": "2026-06-29T19:53:48.346348",
+    "secured_file": "24df872e0d3ce7dfd83b44b782d903c93cf902460e414fa21271dc86035b9fb7.pdf",
+    "university": "UNIVERSITAS BRAWIJAYA",
+    "program": "Teknik Elektro"
+  },
+  "8891755026": {
+    "name": "Joko Kusuma",
+    "code": "UD-755026-JOKOKUSUMA",
+    "hash": "f3c71007276f6f5e4c5c69e28c68b7fcee8fbbba1c17cad174afc6c6d1edbcb5",
+    "signature": "974440d7db3c5fbdbc9a21335c3d9a38db419e159888f24776c23d1ec65ec836",
+    "timestamp": "2026-06-29T19:53:48.555176",
+    "secured_file": "f3c71007276f6f5e4c5c69e28c68b7fcee8fbbba1c17cad174afc6c6d1edbcb5.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Teknik Elektro"
+  },
+  "9100508496": {
+    "name": "Hani Susanto",
+    "code": "ITB-508496-HANISUSANT",
+    "hash": "6592665f0d4e97bf5ac5bd5e697d8140423af06543cd9d0d6722631b3c13d855",
+    "signature": "5ca3c3ec5056a87ecf09bf0635344d21a79daa0d9996eac67bb188aa35a8aafb",
+    "timestamp": "2026-06-29T19:53:48.746470",
+    "secured_file": "6592665f0d4e97bf5ac5bd5e697d8140423af06543cd9d0d6722631b3c13d855.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Farmasi"
+  },
+  "1737846167": {
+    "name": "Dian Hartono",
+    "code": "UD-846167-DIANHARTON",
+    "hash": "8f5603486af9c6703844c80ca9e2efe0b7ba8b1446a1e9bf999ba479a10fd63c",
+    "signature": "24e1d76bae0ad09f37d9906f9b0dbfe1bbd57baffbcb4c7c624d2e2035a31ae3",
+    "timestamp": "2026-06-29T19:53:48.941785",
+    "secured_file": "8f5603486af9c6703844c80ca9e2efe0b7ba8b1446a1e9bf999ba479a10fd63c.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Sistem Informasi"
+  },
+  "2836693221": {
+    "name": "Dewi Saputra",
+    "code": "UA-693221-DEWISAPUTR",
+    "hash": "6111ab8798b6c1930bbf792cc4e212f8d6d999813a6fb151e03c84b0851f00ce",
+    "signature": "c695cde1293499ccd0a0bc4a9acca7a45799559d0a0e5eaa25d8a6ff4d646373",
+    "timestamp": "2026-06-29T19:53:49.130993",
+    "secured_file": "6111ab8798b6c1930bbf792cc4e212f8d6d999813a6fb151e03c84b0851f00ce.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Teknik Sipil"
+  },
+  "3479343155": {
+    "name": "Putri Gunawan",
+    "code": "UH-343155-PUTRIGUNAW",
+    "hash": "2b435429261c58601a3747d454a23fbf94de49d4a23ee92c85403a481e014aee",
+    "signature": "7644228700c53e49a79d1f49ed1530798e50066420a10bfd7d099a93273ba841",
+    "timestamp": "2026-06-29T19:53:49.324471",
+    "secured_file": "2b435429261c58601a3747d454a23fbf94de49d4a23ee92c85403a481e014aee.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Pendidikan Fisika"
+  },
+  "7315356538": {
+    "name": "Vina Setiawan",
+    "code": "UA-356538-VINASETIAW",
+    "hash": "144f64bee29bc8baf80fa4a7054849b828dc243ccec1aff69e52e6688cbd44eb",
+    "signature": "e7cab54f02e6be2c2af7104db052ed9ecf3f42fba6527036e7c46b7174225b7a",
+    "timestamp": "2026-06-29T19:53:49.608000",
+    "secured_file": "144f64bee29bc8baf80fa4a7054849b828dc243ccec1aff69e52e6688cbd44eb.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Kedokteran"
+  },
+  "1090818452": {
+    "name": "Ahmad Utama",
+    "code": "ITB-818452-AHMADUTAMA",
+    "hash": "b03bc8a80f44576826129a950d62e9c92d56ff578573cf0b14cd0610d70a4093",
+    "signature": "59152d44053a9eef3df97dba71af7099ae297585a51d9d21c2749d42eb7fd62b",
+    "timestamp": "2026-06-29T19:53:49.785745",
+    "secured_file": "b03bc8a80f44576826129a950d62e9c92d56ff578573cf0b14cd0610d70a4093.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Sistem Informasi"
+  },
+  "5141910162": {
+    "name": "Umar Gunawan",
+    "code": "USM-910162-UMARGUNAWA",
+    "hash": "1ba3b9ab3d4ecfbf2c0e1d2bb5cf1aef693bbe9f82dd693ab25db9b9553d6e5b",
+    "signature": "4013a0589f18d2c8083469c2432f5ef47356f8b07bfd5937258b474770b492fc",
+    "timestamp": "2026-06-29T19:53:50.013059",
+    "secured_file": "1ba3b9ab3d4ecfbf2c0e1d2bb5cf1aef693bbe9f82dd693ab25db9b9553d6e5b.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Akuntansi"
+  },
+  "6749366530": {
+    "name": "Putri Permana",
+    "code": "UP-366530-PUTRIPERMA",
+    "hash": "4c2356e4663f04d7cc296648f199b6b648ad2130cc3fdbd9f5ab35938e2d05cf",
+    "signature": "dc0e0f06e542c9b8226f719e2fbcd892e1ca1a9db5992b49b63344d027345ec1",
+    "timestamp": "2026-06-29T19:53:50.216277",
+    "secured_file": "4c2356e4663f04d7cc296648f199b6b648ad2130cc3fdbd9f5ab35938e2d05cf.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Informatika"
+  },
+  "7241092363": {
+    "name": "Ahmad Lestari",
+    "code": "UA-092363-AHMADLESTA",
+    "hash": "8539f7843d8da47b97011a030a18aacf3b5433aeb8d8af1a76dff301fcf34806",
+    "signature": "f8899a454aaa32062e51a3b996be1b47efc1e9a1f6ff85da19cef16ce204c69d",
+    "timestamp": "2026-06-29T19:53:50.448417",
+    "secured_file": "8539f7843d8da47b97011a030a18aacf3b5433aeb8d8af1a76dff301fcf34806.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Pendidikan Fisika"
+  },
+  "6443213115": {
+    "name": "Umar Nugroho",
+    "code": "UD-213115-UMARNUGROH",
+    "hash": "43e520a83e03040e0d6db8a748cdaff58d6f2919885e4033a48a2ea73096671a",
+    "signature": "a54e27119df3f0735c1ce4c8f49c983ef2814d7ac2551af6fb074932d02605db",
+    "timestamp": "2026-06-29T19:53:50.626279",
+    "secured_file": "43e520a83e03040e0d6db8a748cdaff58d6f2919885e4033a48a2ea73096671a.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Statistika"
+  },
+  "8120208175": {
+    "name": "Guntur Rahayu",
+    "code": "ITB-208175-GUNTURRAHA",
+    "hash": "7fa80e59754ffa9d528230149217827908165afa5366aa9d61885e7022b7b8a1",
+    "signature": "85e3786a604363052248d57b2e772dd609363965b084d4e6c2f22de2976897c7",
+    "timestamp": "2026-06-29T19:53:50.832406",
+    "secured_file": "7fa80e59754ffa9d528230149217827908165afa5366aa9d61885e7022b7b8a1.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Manajemen"
+  },
+  "7322680095": {
+    "name": "Fajar Wahyudi",
+    "code": "UGM-680095-FAJARWAHYU",
+    "hash": "fad839478ac29e50d9b9fb41a88d5cc3f973fa1c5434e26a9c05bad808a030b6",
+    "signature": "51f8bfa39091553eb2ba66520a9e287e4e5726a8a42e997431e8649b6d48e1d7",
+    "timestamp": "2026-06-29T19:53:51.023247",
+    "secured_file": "fad839478ac29e50d9b9fb41a88d5cc3f973fa1c5434e26a9c05bad808a030b6.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Kedokteran"
+  },
+  "7661664679": {
+    "name": "Vina Hartono",
+    "code": "UGM-664679-VINAHARTON",
+    "hash": "c64f615ed2f8d4a40721ad0ea933603ced5dbcba834eec0a54fa05e0a51b2afb",
+    "signature": "619b927b261115b666469cbf4466882ef87a1217582af446e85a329227bd4cba",
+    "timestamp": "2026-06-29T19:53:51.226520",
+    "secured_file": "c64f615ed2f8d4a40721ad0ea933603ced5dbcba834eec0a54fa05e0a51b2afb.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Statistika"
+  },
+  "2588680317": {
+    "name": "Yuni Susanto",
+    "code": "UI-680317-YUNISUSANT",
+    "hash": "0c2731afdafa0cb54dd53794790db46b87e1cfe7e0fb76e9d01f1f335543096e",
+    "signature": "2b931ad1f16fc013709e0e00c27f02f51820eb463420c4ee73d8f964795fbf35",
+    "timestamp": "2026-06-29T19:53:51.485501",
+    "secured_file": "0c2731afdafa0cb54dd53794790db46b87e1cfe7e0fb76e9d01f1f335543096e.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Kedokteran"
+  },
+  "8725418811": {
+    "name": "Indra Gunawan",
+    "code": "UI-418811-INDRAGUNAW",
+    "hash": "3fc5a777a46504ad52c5012fdd32d917ec283ca4cc945d099fa8ef8bef496547",
+    "signature": "937ebb03523b174de6d879cb75f27b4214c89ff6faa7d02d69f77b58160c964f",
+    "timestamp": "2026-06-29T19:53:51.653369",
+    "secured_file": "3fc5a777a46504ad52c5012fdd32d917ec283ca4cc945d099fa8ef8bef496547.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Akuntansi"
+  },
+  "2744712349": {
+    "name": "Putri Sari",
+    "code": "UGM-712349-PUTRISARI",
+    "hash": "ab4c2aac34c7d6ebc86bf8aa00aca2b282a99432f6a421abd2efed2adcbe70e6",
+    "signature": "25bcafc72917b2cae27d44a0d65c1f25bb20bcde96016fda1a1cde940db30912",
+    "timestamp": "2026-06-29T19:53:51.820203",
+    "secured_file": "ab4c2aac34c7d6ebc86bf8aa00aca2b282a99432f6a421abd2efed2adcbe70e6.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Teknik Informatika"
+  },
+  "3617561399": {
+    "name": "Vina Arifin",
+    "code": "ITB-561399-VINAARIFIN",
+    "hash": "64439348c30b21df526ce9a1638ff2dbb80dcc65f48d1e7aa6a87f61bc0fc5c7",
+    "signature": "0268436679591e137b42686b78ad63f3902b197289984bcd8a7fe3d36415784f",
+    "timestamp": "2026-06-29T19:53:52.016634",
+    "secured_file": "64439348c30b21df526ce9a1638ff2dbb80dcc65f48d1e7aa6a87f61bc0fc5c7.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Farmasi"
+  },
+  "2439053050": {
+    "name": "Joko Wijaya",
+    "code": "UP-053050-JOKOWIJAYA",
+    "hash": "2853bd1f59809d7f7b2ba4459f8ca13553aa7ece4cc98c31c8dd787cb8ffba13",
+    "signature": "4895fbcb2f027aba45b6182b34588fa9284402b9ee09cc7f3bdc0aa102ab5171",
+    "timestamp": "2026-06-29T19:53:52.208114",
+    "secured_file": "2853bd1f59809d7f7b2ba4459f8ca13553aa7ece4cc98c31c8dd787cb8ffba13.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Farmasi"
+  },
+  "2334136938": {
+    "name": "Fitri Wijaya",
+    "code": "UI-136938-FITRIWIJAY",
+    "hash": "8b82ae17edcb441f491ff8b06906b5395e85f96fc6962f3433395ddd10fb613b",
+    "signature": "277b705686faec15d47ef1d176adb4907153185792084824105876052443f851",
+    "timestamp": "2026-06-29T19:53:52.406725",
+    "secured_file": "8b82ae17edcb441f491ff8b06906b5395e85f96fc6962f3433395ddd10fb613b.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Teknik Informatika"
+  },
+  "7789482095": {
+    "name": "Indra Baskoro",
+    "code": "UA-482095-INDRABASKO",
+    "hash": "81f124a600e0355189d46c8bf189d0039bc6b1a0720a21fb1b403ca6959d70fe",
+    "signature": "f9ae2fbe5adc8f902926abcce3154495ccb8153cde5a71c83717be78e265baca",
+    "timestamp": "2026-06-29T19:53:52.563514",
+    "secured_file": "81f124a600e0355189d46c8bf189d0039bc6b1a0720a21fb1b403ca6959d70fe.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Akuntansi"
+  },
+  "9548139246": {
+    "name": "Hani Gunawan",
+    "code": "UP-139246-HANIGUNAWA",
+    "hash": "16b213932a2db27763572e596128f9638197024fee1c67536eaf39e423385c1e",
+    "signature": "547203333bf555c12c05f6d9c6a239fbf7a0f6b795607d7ede0386a58073787f",
+    "timestamp": "2026-06-29T19:53:52.752429",
+    "secured_file": "16b213932a2db27763572e596128f9638197024fee1c67536eaf39e423385c1e.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Elektro"
+  },
+  "4228505420": {
+    "name": "Nanda Baskoro",
+    "code": "UA-505420-NANDABASKO",
+    "hash": "68b216fd33674c02fa7f5a2a85bf3cbd465579db7892dc90769580ed80a769c2",
+    "signature": "2855cf6be709e96acf9c052be31c11948c5071320278d9426bc26d91ce77d059",
+    "timestamp": "2026-06-29T19:53:52.949794",
+    "secured_file": "68b216fd33674c02fa7f5a2a85bf3cbd465579db7892dc90769580ed80a769c2.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Teknik Elektro"
+  },
+  "3259796668": {
+    "name": "Vina Susanto",
+    "code": "UD-796668-VINASUSANT",
+    "hash": "e680d62a64e1fa75bbd176c36a4639c86ed27e24db090d104be2ff7cecc49ad7",
+    "signature": "8b92b866e6649eeced3e2c275d3f61056f765be06af8d073c88c2bd0701a10d9",
+    "timestamp": "2026-06-29T19:53:53.186812",
+    "secured_file": "e680d62a64e1fa75bbd176c36a4639c86ed27e24db090d104be2ff7cecc49ad7.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Sistem Informasi"
+  },
+  "3392853972": {
+    "name": "Nanda Setiawan",
+    "code": "UP-853972-NANDASETIA",
+    "hash": "611069e725430a2d84b32613453ec2a5773f5fc2c1649ce1052a66c091f3f815",
+    "signature": "95dbca03b318c1aa7792a4b04b189623f3491b8804dfb0bafa2a064fa78e22d5",
+    "timestamp": "2026-06-29T19:53:53.553780",
+    "secured_file": "611069e725430a2d84b32613453ec2a5773f5fc2c1649ce1052a66c091f3f815.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Mesin"
+  },
+  "9975665037": {
+    "name": "Guntur Rahayu",
+    "code": "IPB-665037-GUNTURRAHA",
+    "hash": "900cc9b14cea89cd5ac5619ce61d6625590b790226951ef61f2ac45fd8e4fb2e",
+    "signature": "082b58b8a733d25b61d12670e36990ce5e60e1658ee3e48753bbf7ca6081438c",
+    "timestamp": "2026-06-29T19:53:53.720578",
+    "secured_file": "900cc9b14cea89cd5ac5619ce61d6625590b790226951ef61f2ac45fd8e4fb2e.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Hukum"
+  },
+  "2695435981": {
+    "name": "Dewi Cahyono",
+    "code": "UD-435981-DEWICAHYON",
+    "hash": "4f4a6cda1309e51f433c43ba1b412e2db00b3f207dbee623eb71487750ab8925",
+    "signature": "f646631a7ba74245ab043a3781d82e5c353165476b1305813f7b3d1d25fbefee",
+    "timestamp": "2026-06-29T19:53:53.907031",
+    "secured_file": "4f4a6cda1309e51f433c43ba1b412e2db00b3f207dbee623eb71487750ab8925.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Kedokteran"
+  },
+  "5240968423": {
+    "name": "Dewi Sutanto",
+    "code": "UI-968423-DEWISUTANT",
+    "hash": "8b51d1752079d1709ad4d22ecf25f567749376d2dda9b040f154f45e1aec9b11",
+    "signature": "740a601b2c58713fb1fed0cc50498247d188c90a9e78f058849b0d217bf54db9",
+    "timestamp": "2026-06-29T19:53:54.091832",
+    "secured_file": "8b51d1752079d1709ad4d22ecf25f567749376d2dda9b040f154f45e1aec9b11.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Manajemen"
+  },
+  "5003116449": {
+    "name": "Guntur Yudha",
+    "code": "UGM-116449-GUNTURYUDH",
+    "hash": "e51c43cf325e365a3821780b7fb8a257d9f7f870e5bbddff7a8c5a8a03dc5603",
+    "signature": "af46661076d9f15120c0778c82053cbfe176b2a377ca3f7d0eb2a1b55ec24e10",
+    "timestamp": "2026-06-29T19:53:54.241863",
+    "secured_file": "e51c43cf325e365a3821780b7fb8a257d9f7f870e5bbddff7a8c5a8a03dc5603.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Kimia"
+  },
+  "3948137212": {
+    "name": "Vina Purnama",
+    "code": "UA-137212-VINAPURNAM",
+    "hash": "2da2044745942a16d75aa313185103f6980ac43f0581455d5206297d9e93e73d",
+    "signature": "da60f858879b4dc50057b818029c9dcf899cfc045ac500773bf1d39bc092a994",
+    "timestamp": "2026-06-29T19:53:54.450118",
+    "secured_file": "2da2044745942a16d75aa313185103f6980ac43f0581455d5206297d9e93e73d.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Statistika"
+  },
+  "7129754591": {
+    "name": "Wawan Hidayat",
+    "code": "USM-754591-WAWANHIDAY",
+    "hash": "7e5775c1aff5bda04e7dcc83c5c24b5caaf8ce474201cdf1990d231c6026854f",
+    "signature": "562c8d76c78d946cfcea8c715d2cde6d457bc20558110567e82bb6292474184b",
+    "timestamp": "2026-06-29T19:53:54.838007",
+    "secured_file": "7e5775c1aff5bda04e7dcc83c5c24b5caaf8ce474201cdf1990d231c6026854f.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Pendidikan Matematika"
+  },
+  "2040714156": {
+    "name": "Oktavian Saputra",
+    "code": "UD-714156-OKTAVIANSA",
+    "hash": "bf5238b929f1f02df8a445dd2e8bcf24aefc267db265528bae032579e073ff35",
+    "signature": "85224b2649df7a30d6ce8ce5188a61b5d2065dc329a5134e07986ab829200f53",
+    "timestamp": "2026-06-29T19:53:55.074622",
+    "secured_file": "bf5238b929f1f02df8a445dd2e8bcf24aefc267db265528bae032579e073ff35.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Biologi"
+  },
+  "6847294531": {
+    "name": "Guntur Santoso",
+    "code": "UD-294531-GUNTURSANT",
+    "hash": "a2092c097fe6b57448fdcdec018a751c67c209e223b5a7119f1b8cddb7fb3535",
+    "signature": "de18ae3b43b499a4a49fcb2284e03aec67f418a25be2eb65acfc34a89c9f6b47",
+    "timestamp": "2026-06-29T19:53:55.221668",
+    "secured_file": "a2092c097fe6b57448fdcdec018a751c67c209e223b5a7119f1b8cddb7fb3535.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Teknik Mesin"
+  },
+  "9552413784": {
+    "name": "Fajar Santoso",
+    "code": "UI-413784-FAJARSANTO",
+    "hash": "22b2189f3bb4b9594c413055c11f90a432c4b9352b7afdf29905a80559092c21",
+    "signature": "1de61144a7d41bfb540f1c482035b902a79a28b1156348f8de8556f74ea95904",
+    "timestamp": "2026-06-29T19:53:55.364734",
+    "secured_file": "22b2189f3bb4b9594c413055c11f90a432c4b9352b7afdf29905a80559092c21.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Kimia"
+  },
+  "4617879635": {
+    "name": "Eka Sari",
+    "code": "UB-879635-EKASARI",
+    "hash": "f9c243d3621acd44cfac794f3df5e20bbcb50f686ab33cf38ecbc871cb753ffe",
+    "signature": "aeae8993dd833c68bb3f3aaa4416cb5b334c0c47aaec266401b04b03b82ea806",
+    "timestamp": "2026-06-29T19:53:55.563507",
+    "secured_file": "f9c243d3621acd44cfac794f3df5e20bbcb50f686ab33cf38ecbc871cb753ffe.pdf",
+    "university": "UNIVERSITAS BRAWIJAYA",
+    "program": "Teknik Informatika"
+  },
+  "1550289449": {
+    "name": "Adi Purnama",
+    "code": "UD-289449-ADIPURNAMA",
+    "hash": "ca4f11bb7cb0bd247ade5947cb95023bf8855e2bca57a17d79b689fae6750308",
+    "signature": "6f011895331f5628acea6f0b8dac2a6d58fb520e93160f93ea047ea74737357e",
+    "timestamp": "2026-06-29T19:53:55.929855",
+    "secured_file": "ca4f11bb7cb0bd247ade5947cb95023bf8855e2bca57a17d79b689fae6750308.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Farmasi"
+  },
+  "8940803621": {
+    "name": "Guntur Utama",
+    "code": "UP-803621-GUNTURUTAM",
+    "hash": "3928fe5eb41f1b9bdef9c7effc589c2ec6cf75a7306e440b7edbfef6bb75aed6",
+    "signature": "d6088e33d7dc46d6560b9c0532adcb7994a84e57e7e1c2a116dff6e6eb5016f2",
+    "timestamp": "2026-06-29T19:53:56.174090",
+    "secured_file": "3928fe5eb41f1b9bdef9c7effc589c2ec6cf75a7306e440b7edbfef6bb75aed6.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Informatika"
+  },
+  "1449497816": {
+    "name": "Candra Gunawan",
+    "code": "ITB-497816-CANDRAGUNA",
+    "hash": "bf7940bb591d7d08fefbc8e8ab16eeeaee20e36be755e8e559f2afa5ffa8902c",
+    "signature": "2f1c54cd0f8c247a6486f123554f56fa02f2d88074ce8f354965d5e97bc5ad8a",
+    "timestamp": "2026-06-29T19:53:56.432190",
+    "secured_file": "bf7940bb591d7d08fefbc8e8ab16eeeaee20e36be755e8e559f2afa5ffa8902c.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Kedokteran"
+  },
+  "9670859075": {
+    "name": "Sari Hidayat",
+    "code": "UI-859075-SARIHIDAYA",
+    "hash": "8a1bebc13ba739c5a2fccf304b51a9add9eaffb6dc60cb3f1aa7879fb8596e16",
+    "signature": "842cb73bf14997428ceefa7f52dd9fd0f27c2469f99ae7d2fb2380f2a4d9f4ed",
+    "timestamp": "2026-06-29T19:53:56.689987",
+    "secured_file": "8a1bebc13ba739c5a2fccf304b51a9add9eaffb6dc60cb3f1aa7879fb8596e16.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Teknik Mesin"
+  },
+  "7400779576": {
+    "name": "Vina Utama",
+    "code": "UP-779576-VINAUTAMA",
+    "hash": "fffde1be0b43222881ba24792b548655d10dcd996450f1e09fd6aeaba5562d9e",
+    "signature": "0b2e5cb4fe11ad1bb9f706e4622b6b0dc4eb61dd97e58b248047fcb8319a5645",
+    "timestamp": "2026-06-29T19:53:56.844622",
+    "secured_file": "fffde1be0b43222881ba24792b548655d10dcd996450f1e09fd6aeaba5562d9e.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Sistem Informasi"
+  },
+  "1205264876": {
+    "name": "Maya Santoso",
+    "code": "UH-264876-MAYASANTOS",
+    "hash": "b807ac79e85331e8ccf92316e38f6577df79a96b9cbd12e7d154b1b01ee766e0",
+    "signature": "472f0c2e07878dc5321853fbef6c1acfdce51cc52782a0060aa8a20f7a027085",
+    "timestamp": "2026-06-29T19:53:57.006790",
+    "secured_file": "b807ac79e85331e8ccf92316e38f6577df79a96b9cbd12e7d154b1b01ee766e0.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Teknik Informatika"
+  },
+  "1199981137": {
+    "name": "Oktavian Pratama",
+    "code": "UH-981137-OKTAVIANPR",
+    "hash": "0bd68c0b2f9ac53d635a3bcc1ed4caf7130b8fabe096eab82a5582cb50c24cf6",
+    "signature": "62afdda61d0dfd516ab9c5d14adcee9ec78d334fbdef34d26a0806fc1d08eac1",
+    "timestamp": "2026-06-29T19:53:57.166748",
+    "secured_file": "0bd68c0b2f9ac53d635a3bcc1ed4caf7130b8fabe096eab82a5582cb50c24cf6.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Pendidikan Fisika"
+  },
+  "9451461643": {
+    "name": "Maya Permana",
+    "code": "IPB-461643-MAYAPERMAN",
+    "hash": "62d198bd7b366d7f73670c2ea3eeea235ed0dbff3e74e560e9069ecc8aa7b6d3",
+    "signature": "926d6f67cc57f4b7910bcf26d523eecb400c96a696a00dfba5eb914e5529c7f6",
+    "timestamp": "2026-06-29T19:53:57.349146",
+    "secured_file": "62d198bd7b366d7f73670c2ea3eeea235ed0dbff3e74e560e9069ecc8aa7b6d3.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Kimia"
+  },
+  "1694820532": {
+    "name": "Putri Sari",
+    "code": "UP-820532-PUTRISARI",
+    "hash": "cb50ed696cffafa6cc537c3850b8c6abef70a378f673241dd12d8b463ca46f46",
+    "signature": "1f4f010d392270853d9feb3b6eee673fc77f053917e4779f6b3431fef9c91244",
+    "timestamp": "2026-06-29T19:53:57.539701",
+    "secured_file": "cb50ed696cffafa6cc537c3850b8c6abef70a378f673241dd12d8b463ca46f46.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Sipil"
+  },
+  "4231360198": {
+    "name": "Dewi Saputra",
+    "code": "UH-360198-DEWISAPUTR",
+    "hash": "23e034a5d0253321ddf564d6dbf6a682004277ae4b614e0d65fa24c41b22262e",
+    "signature": "0d9e96b4ad6fb0300d5b329939f6fb119a18fb45f08c5e0441e19cf4ac3a216d",
+    "timestamp": "2026-06-29T19:53:57.754708",
+    "secured_file": "23e034a5d0253321ddf564d6dbf6a682004277ae4b614e0d65fa24c41b22262e.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Kimia"
+  },
+  "9536800336": {
+    "name": "Oktavian Putra",
+    "code": "IPB-800336-OKTAVIANPU",
+    "hash": "94b6176ca984fd36569ddeb2d2f423a7d87c7dc7e2a949b6784f1d0006a7f355",
+    "signature": "0c1a517b03709908c53b47f175fda37889abe265df8c2bc17cb2bb4952c3cc4a",
+    "timestamp": "2026-06-29T19:53:58.027106",
+    "secured_file": "94b6176ca984fd36569ddeb2d2f423a7d87c7dc7e2a949b6784f1d0006a7f355.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Kedokteran"
+  },
+  "1033322128": {
+    "name": "Dian Susanto",
+    "code": "UD-322128-DIANSUSANT",
+    "hash": "9b92c223445e9f6f49cb7476cdd9bc9537591661df13fe20c433d8c49d7d5f3d",
+    "signature": "a9c0e763b177806b647dd9627cba8fc46d369dae040559036eafaf12124e8525",
+    "timestamp": "2026-06-29T19:53:58.281966",
+    "secured_file": "9b92c223445e9f6f49cb7476cdd9bc9537591661df13fe20c433d8c49d7d5f3d.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Sistem Informasi"
+  },
+  "2678623664": {
+    "name": "Kartika Utama",
+    "code": "UI-623664-KARTIKAUTA",
+    "hash": "50a7e79902c29af43dad8eb832d9252a217da73d379db76bbe8e632f31ea7d3c",
+    "signature": "7a42d55fd2057a586dba72c95832d550b2e163438334e8a1a92c36ae3b0f2d38",
+    "timestamp": "2026-06-29T19:53:58.741093",
+    "secured_file": "50a7e79902c29af43dad8eb832d9252a217da73d379db76bbe8e632f31ea7d3c.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Sistem Informasi"
+  },
+  "4524682036": {
+    "name": "Xander Putra",
+    "code": "UD-682036-XANDERPUTR",
+    "hash": "847e439bffe04b22adb531d1d58e87d9e4ed29af4f9158506bfe86f592d542d3",
+    "signature": "f5a421931a8438acb15038a6f8f9b69a6257549833f84143855243967b78ca21",
+    "timestamp": "2026-06-29T19:53:58.913182",
+    "secured_file": "847e439bffe04b22adb531d1d58e87d9e4ed29af4f9158506bfe86f592d542d3.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Teknik Sipil"
+  },
+  "3605790116": {
+    "name": "Yuni Zulkarnain",
+    "code": "IPB-790116-YUNIZULKAR",
+    "hash": "1aaec755032d1e43c5bb251f81856ade5eba95d0a01de05218b77ee295e2c849",
+    "signature": "9a05e27c9346adab6315087190b8946be1a1ca1559065f735f44fd34bcb53033",
+    "timestamp": "2026-06-29T19:53:59.296822",
+    "secured_file": "1aaec755032d1e43c5bb251f81856ade5eba95d0a01de05218b77ee295e2c849.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Pendidikan Matematika"
+  },
+  "6825238812": {
+    "name": "Vina Arifin",
+    "code": "USM-238812-VINAARIFIN",
+    "hash": "dcce05e3fb46fedc145d5584e7bfe9e6dea2073de88e49f611325fd2efa306da",
+    "signature": "0eba541f787d37897dad40ddecf854b37d744075d33ab4708969c4e159e0a399",
+    "timestamp": "2026-06-29T19:53:59.566999",
+    "secured_file": "dcce05e3fb46fedc145d5584e7bfe9e6dea2073de88e49f611325fd2efa306da.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Pendidikan Fisika"
+  },
+  "2135892738": {
+    "name": "Kartika Pratama",
+    "code": "UH-892738-KARTIKAPRA",
+    "hash": "6168485b4936d78943268fbdb0c4840bb8e1274587e149eb167d18fdfd8e547f",
+    "signature": "2fc714085199e84ffe6898233883c57b9387cdce7fc07bb23079e639a547d258",
+    "timestamp": "2026-06-29T19:53:59.749029",
+    "secured_file": "6168485b4936d78943268fbdb0c4840bb8e1274587e149eb167d18fdfd8e547f.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Hukum"
+  },
+  "5781521296": {
+    "name": "Zaki Sari",
+    "code": "IPB-521296-ZAKISARI",
+    "hash": "c3b4686ac1149be04306d225b0b088a5375de541317226cdac231d4d46b2e574",
+    "signature": "627b86376cd74e88d5b707fba7a9188bbdaf10978c9e119a4f80428408a16601",
+    "timestamp": "2026-06-29T19:53:59.920468",
+    "secured_file": "c3b4686ac1149be04306d225b0b088a5375de541317226cdac231d4d46b2e574.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Teknik Mesin"
+  },
+  "7955121948": {
+    "name": "Maya Rahayu",
+    "code": "UH-121948-MAYARAHAYU",
+    "hash": "078f9d2e5c916915498c588bd56e2b636ed82548d10179a4accfaea9e8ce7085",
+    "signature": "9c7a908538a8a4a64cfffc2ae589822e7ee8bc382f03b81431a0a9e9dbea2d32",
+    "timestamp": "2026-06-29T19:54:00.119198",
+    "secured_file": "078f9d2e5c916915498c588bd56e2b636ed82548d10179a4accfaea9e8ce7085.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Sistem Informasi"
+  },
+  "1233348826": {
+    "name": "Dewi Rahayu",
+    "code": "ITB-348826-DEWIRAHAYU",
+    "hash": "401dda7ce5a8e6158a0b88b76fc3e89ccdceedf009b9fe6d7ae0b65a9fc91f41",
+    "signature": "70da0ba79517babc9e3bc0bb2358a0ece4f9cc200005b06eb41ee2f77dbcdf73",
+    "timestamp": "2026-06-29T19:54:00.299340",
+    "secured_file": "401dda7ce5a8e6158a0b88b76fc3e89ccdceedf009b9fe6d7ae0b65a9fc91f41.pdf",
+    "university": "INSTITUT TEKNOLOGI BANDUNG",
+    "program": "Pendidikan Fisika"
+  },
+  "3925344050": {
+    "name": "Dian Susanto",
+    "code": "UGM-344050-DIANSUSANT",
+    "hash": "b7e898681896ef505fa6036c009945bca1d1a45f711a1a5b353794603fe6a9d0",
+    "signature": "162d7023f6da93e49de1ac16ed5f8b8e5cfe69a84e1d569cfe1f839e90b6065d",
+    "timestamp": "2026-06-29T19:54:00.501239",
+    "secured_file": "b7e898681896ef505fa6036c009945bca1d1a45f711a1a5b353794603fe6a9d0.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Biologi"
+  },
+  "3710976960": {
+    "name": "Hani Saputra",
+    "code": "IPB-976960-HANISAPUTR",
+    "hash": "968b7fe489cbee8656312f3f7915e8a07e94358a90602c99daa70a1f9fb6fee6",
+    "signature": "32f25a3376dd49e6ffa640c572ce9c54395a22a8cadc849d700afd862cdfdb0b",
+    "timestamp": "2026-06-29T19:54:00.647283",
+    "secured_file": "968b7fe489cbee8656312f3f7915e8a07e94358a90602c99daa70a1f9fb6fee6.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Akuntansi"
+  },
+  "9569842858": {
+    "name": "Adi Hidayat",
+    "code": "USM-842858-ADIHIDAYAT",
+    "hash": "e97f449344ebca94760dfd4a10fccf96dd9195dfda04febd125bd9c5b59b65a3",
+    "signature": "77d78cbb1bcb87d59ed40a57ff3b83221bfc7cc5c6d9a0665ab00f4eb82a8218",
+    "timestamp": "2026-06-29T19:54:00.865031",
+    "secured_file": "e97f449344ebca94760dfd4a10fccf96dd9195dfda04febd125bd9c5b59b65a3.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Sistem Informasi"
+  },
+  "6668814511": {
+    "name": "Kartika Arifin",
+    "code": "UP-814511-KARTIKAARI",
+    "hash": "34bfed671074ab5d21876d5899868db561b77139851891dcff3ff5405f595f2e",
+    "signature": "25e19cd210de850752174b1fa2643365da9828668c73352119c5cc322ad81ec7",
+    "timestamp": "2026-06-29T19:54:01.040965",
+    "secured_file": "34bfed671074ab5d21876d5899868db561b77139851891dcff3ff5405f595f2e.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Hukum"
+  },
+  "8309435674": {
+    "name": "Fajar Baskoro",
+    "code": "UI-435674-FAJARBASKO",
+    "hash": "0f229c6d7f17a5aa5ef66328d15ceb548fd4bfe12e443d6114b1fe6938eaa951",
+    "signature": "0a2d4f85e4c75f3b7772a5171597d49cec517f15b7f62bc794c3e537c038082a",
+    "timestamp": "2026-06-29T19:54:01.214437",
+    "secured_file": "0f229c6d7f17a5aa5ef66328d15ceb548fd4bfe12e443d6114b1fe6938eaa951.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Hukum"
+  },
+  "3258092079": {
+    "name": "Bella Gunawan",
+    "code": "UA-092079-BELLAGUNAW",
+    "hash": "c241fea68902f7e2d2015e4a0c5e249f479ec69feab6b228c027999ce4659116",
+    "signature": "fe73e77715b059286c8777a6305cab046ac65350e09d89fa47ab68584a555fce",
+    "timestamp": "2026-06-29T19:54:01.416345",
+    "secured_file": "c241fea68902f7e2d2015e4a0c5e249f479ec69feab6b228c027999ce4659116.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Teknik Elektro"
+  },
+  "7358920706": {
+    "name": "Putri Arifin",
+    "code": "UD-920706-PUTRIARIFI",
+    "hash": "2912f5fd9ea66b823e1deb84a9c147e2ef11ba1dd55b73f6b2ba9eb7e968450c",
+    "signature": "c5c0b9d4c0a6759ab2708085c38ba9fa3c0529b5562e252bada03bbce9758ad1",
+    "timestamp": "2026-06-29T19:54:01.566086",
+    "secured_file": "2912f5fd9ea66b823e1deb84a9c147e2ef11ba1dd55b73f6b2ba9eb7e968450c.pdf",
+    "university": "UNIVERSITAS DIPONEGORO",
+    "program": "Biologi"
+  },
+  "9574095992": {
+    "name": "Hani Hidayat",
+    "code": "USM-095992-HANIHIDAYA",
+    "hash": "ae4a2f927b2014dfe6773775f96022658c85aa6c6cbf68bd218fd60a7e2ea710",
+    "signature": "ec7900a7a23715aae47a099d7b3b29cfa471ed1a2768b777024a2aa153666de1",
+    "timestamp": "2026-06-29T19:54:01.804666",
+    "secured_file": "ae4a2f927b2014dfe6773775f96022658c85aa6c6cbf68bd218fd60a7e2ea710.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Biologi"
+  },
+  "4994709200": {
+    "name": "Zaki Saputra",
+    "code": "UP-709200-ZAKISAPUTR",
+    "hash": "fa5ae28e52097d8dc0c276996af6798220411ae6edbfebe6e1f3c40306b76f58",
+    "signature": "12a3f7693a94eca0244b340ce8af8edb0ff718128b4a1215c34766b5d958c25f",
+    "timestamp": "2026-06-29T19:54:02.022824",
+    "secured_file": "fa5ae28e52097d8dc0c276996af6798220411ae6edbfebe6e1f3c40306b76f58.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Sipil"
+  },
+  "4085814617": {
+    "name": "Putri Lestari",
+    "code": "UI-814617-PUTRILESTA",
+    "hash": "ff92e98611ad948e0142f423d7afdcf545168cf17fe771b33f507d662c7a747e",
+    "signature": "1ff651d7a5d10cca1ec12e38fdbfcf7ef48ab77e845e0dfcb62721fba9769d37",
+    "timestamp": "2026-06-29T19:54:02.182605",
+    "secured_file": "ff92e98611ad948e0142f423d7afdcf545168cf17fe771b33f507d662c7a747e.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Teknik Mesin"
+  },
+  "7134353452": {
+    "name": "Guntur Cahyono",
+    "code": "UA-353452-GUNTURCAHY",
+    "hash": "a058d385486a652d94d2898dae87609e305c50d239fdb3c08a238b08fea227ce",
+    "signature": "e871ab580d7c3b4985be5a073de1c7cacaf3ed4c288dbe0824522f3195a0e37c",
+    "timestamp": "2026-06-29T19:54:02.329069",
+    "secured_file": "a058d385486a652d94d2898dae87609e305c50d239fdb3c08a238b08fea227ce.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Manajemen"
+  },
+  "3729464113": {
+    "name": "Indra Zulkarnain",
+    "code": "IPB-464113-INDRAZULKA",
+    "hash": "15593b7e7ddcc51828f0dff0ae52b4f9fee50cb2fccdef1d30909439bc976380",
+    "signature": "fa2f5c9b5b2e9011b1b9c89ab2762dabb59ded534b0c90e47a361b8cb5fbe114",
+    "timestamp": "2026-06-29T19:54:02.466787",
+    "secured_file": "15593b7e7ddcc51828f0dff0ae52b4f9fee50cb2fccdef1d30909439bc976380.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Teknik Informatika"
+  },
+  "7506868761": {
+    "name": "Fajar Utama",
+    "code": "UA-868761-FAJARUTAMA",
+    "hash": "2013808959a17da5f99ddcf41a1e3422ba897f709da969decf9f46d36d83d78c",
+    "signature": "224bedca95483b0ffe410f0f84f96cb98ba52bf18e45b1d03629badab05cce44",
+    "timestamp": "2026-06-29T19:54:02.627725",
+    "secured_file": "2013808959a17da5f99ddcf41a1e3422ba897f709da969decf9f46d36d83d78c.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Teknik Sipil"
+  },
+  "6957555806": {
+    "name": "Citra Cahyono",
+    "code": "UI-555806-CITRACAHYO",
+    "hash": "23ffae8b5de8e27e5c82e93a5a2fd9f68d8183e1104b7698c42aaf837cd02dca",
+    "signature": "bb37cf561b6ecf13d3071421b2ed8575c7efb84fb6297449b6c1458dda9f9a0f",
+    "timestamp": "2026-06-29T19:54:02.769951",
+    "secured_file": "23ffae8b5de8e27e5c82e93a5a2fd9f68d8183e1104b7698c42aaf837cd02dca.pdf",
+    "university": "UNIVERSITAS INDONESIA",
+    "program": "Teknik Informatika"
+  },
+  "8363102226": {
+    "name": "Maya Wijaya",
+    "code": "UH-102226-MAYAWIJAYA",
+    "hash": "9bf534973c8d6e9ad5f7e0ec712875cdf98266000c197c6d21d3b72cca24d02e",
+    "signature": "16a789c252bebb4df6fc57988f1872fcde3e0c5788c1e119d6b6d258bcf46544",
+    "timestamp": "2026-06-29T19:54:02.965875",
+    "secured_file": "9bf534973c8d6e9ad5f7e0ec712875cdf98266000c197c6d21d3b72cca24d02e.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Statistika"
+  },
+  "6005775960": {
+    "name": "Maya Kurniawan",
+    "code": "UH-775960-MAYAKURNIA",
+    "hash": "e42b7c59f9a70f54a95b8456be13c90b32bf1ff05d5d908e62f7d3063865000d",
+    "signature": "438dba1f4141e5b4731bd3dd06cb0a696c3ef16038b3b927c026596c9a66826c",
+    "timestamp": "2026-06-29T19:54:03.132534",
+    "secured_file": "e42b7c59f9a70f54a95b8456be13c90b32bf1ff05d5d908e62f7d3063865000d.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Teknik Mesin"
+  },
+  "8291172415": {
+    "name": "Dian Susanto",
+    "code": "UA-172415-DIANSUSANT",
+    "hash": "da9f5dd3fe6f4a0eaf535380d6564039a8c13c42a9dfd008330c7dd9aa21202e",
+    "signature": "2a7f52144c925dd2d58f36ee29ea5f7aa8c2c72ca638e5ee208361f174bca63d",
+    "timestamp": "2026-06-29T19:54:03.292654",
+    "secured_file": "da9f5dd3fe6f4a0eaf535380d6564039a8c13c42a9dfd008330c7dd9aa21202e.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Teknik Sipil"
+  },
+  "4315123391": {
+    "name": "Vina Lestari",
+    "code": "UGM-123391-VINALESTAR",
+    "hash": "def6dcc8257218fbee7d979d9614d71b87fe32d343b437f8ffa9686481c7e559",
+    "signature": "dc553467e599b237748f6afa21d65b6ec91ec49dd1f5a0997668bd62f583d52c",
+    "timestamp": "2026-06-29T19:54:03.716097",
+    "secured_file": "def6dcc8257218fbee7d979d9614d71b87fe32d343b437f8ffa9686481c7e559.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Akuntansi"
+  },
+  "3689891846": {
+    "name": "Candra Rahayu",
+    "code": "UA-891846-CANDRARAHA",
+    "hash": "8ea586ebc1ec0978181150f6434570a32e3ea5d8635968b2e4d3024c64a6b8b8",
+    "signature": "0d31047659c0c1ab75781862d7e5f06a23b3589005859702ee12bb820537d655",
+    "timestamp": "2026-06-29T19:54:03.854169",
+    "secured_file": "8ea586ebc1ec0978181150f6434570a32e3ea5d8635968b2e4d3024c64a6b8b8.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Kedokteran"
+  },
+  "4771055369": {
+    "name": "Eko Rahayu",
+    "code": "UA-055369-EKORAHAYU",
+    "hash": "6c1bf7de9db866f6cfcc71180208f74ea8bdd954fa166bf3e9d5d1948d6d9f18",
+    "signature": "7c09c46682601b7cb3ac76ddad2d1b8652daf5dcf236e37e1ffbf42f9ed132e3",
+    "timestamp": "2026-06-29T19:54:03.996445",
+    "secured_file": "6c1bf7de9db866f6cfcc71180208f74ea8bdd954fa166bf3e9d5d1948d6d9f18.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Pendidikan Fisika"
+  },
+  "8905896303": {
+    "name": "Wawan Kusuma",
+    "code": "UA-896303-WAWANKUSUM",
+    "hash": "1ad6e77e29066292e7cd680f67c2eb632db626a62c47d919f511efc80695f18e",
+    "signature": "118bc1292b866e46ea132e71912768341ed972eb3e0e5f651f7dbfe8084f4635",
+    "timestamp": "2026-06-29T19:54:04.174707",
+    "secured_file": "1ad6e77e29066292e7cd680f67c2eb632db626a62c47d919f511efc80695f18e.pdf",
+    "university": "UNIVERSITAS AIRLANGGA",
+    "program": "Sistem Informasi"
+  },
+  "1158735029": {
+    "name": "Nanda Utama",
+    "code": "UP-735029-NANDAUTAMA",
+    "hash": "f8133af5a2904c7750e74e19ec0923ccdde0513e8778abeee0b808597434cf91",
+    "signature": "129c2080f9a9b28baf4412ef897ee2c05bab428b1d8429b9cf3ea0cdb9189a9a",
+    "timestamp": "2026-06-29T19:54:04.399589",
+    "secured_file": "f8133af5a2904c7750e74e19ec0923ccdde0513e8778abeee0b808597434cf91.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Pendidikan Matematika"
+  },
+  "9590432981": {
+    "name": "Lukman Permana",
+    "code": "UB-432981-LUKMANPERM",
+    "hash": "f68a1b0b5b2d03c10c11abb3474967f32d12b6c8a3a18657d791724f3e0237d2",
+    "signature": "8abd3c0d0f06e409fe511206631625a6148d5b108a73c9dd14cac15c5ac48fca",
+    "timestamp": "2026-06-29T19:54:04.605198",
+    "secured_file": "f68a1b0b5b2d03c10c11abb3474967f32d12b6c8a3a18657d791724f3e0237d2.pdf",
+    "university": "UNIVERSITAS BRAWIJAYA",
+    "program": "Teknik Informatika"
+  },
+  "1621438174": {
+    "name": "Candra Cahyono",
+    "code": "UP-438174-CANDRACAHY",
+    "hash": "a2c006e0f55c5b29887b6929a7dcb0929d58d3dddbbd9a860ca3fe1f652857d3",
+    "signature": "d9b08eddb8f7dec2dbb1995e53a9210fe2d6fce98457dd819124f607d1aef1e8",
+    "timestamp": "2026-06-29T19:54:04.761263",
+    "secured_file": "a2c006e0f55c5b29887b6929a7dcb0929d58d3dddbbd9a860ca3fe1f652857d3.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Manajemen"
+  },
+  "2403287462": {
+    "name": "Oktavian Santoso",
+    "code": "USM-287462-OKTAVIANSA",
+    "hash": "c2aacd124f61fe43dac6d9cb41ee5680a31ec9da78c292c7f720d27d6198e37c",
+    "signature": "5431049d3ab130543b4390c7e43928fa9a490080ee1b10cf3bee274359722256",
+    "timestamp": "2026-06-29T19:54:04.890722",
+    "secured_file": "c2aacd124f61fe43dac6d9cb41ee5680a31ec9da78c292c7f720d27d6198e37c.pdf",
+    "university": "UNIVERSITAS SEBELAS MARET",
+    "program": "Pendidikan Matematika"
+  },
+  "9839912332": {
+    "name": "Rizki Cahyono",
+    "code": "IPB-912332-RIZKICAHYO",
+    "hash": "b176d7a0d3250cf0de985b8cf4823744cfe2e165b01f482ebbdb03df5c9f7d70",
+    "signature": "a0862dc4272ff35a3e148f26aa48485b9f38a3e1630b22bc40125649ae72ee68",
+    "timestamp": "2026-06-29T19:54:05.186133",
+    "secured_file": "b176d7a0d3250cf0de985b8cf4823744cfe2e165b01f482ebbdb03df5c9f7d70.pdf",
+    "university": "INSTITUT PERTANIAN BOGOR",
+    "program": "Manajemen"
+  },
+  "2754528129": {
+    "name": "Eka Kusuma",
+    "code": "UB-528129-EKAKUSUMA",
+    "hash": "8b9a0ec8f3408ab015b8782755d83402c1b4b6684ae054c7aac0b87ce1a8a4f6",
+    "signature": "4da799c0e321e3f0f32e0646bb2647688794b0cd4c21a4b14be3dd5218a5978d",
+    "timestamp": "2026-06-29T19:54:05.487941",
+    "secured_file": "8b9a0ec8f3408ab015b8782755d83402c1b4b6684ae054c7aac0b87ce1a8a4f6.pdf",
+    "university": "UNIVERSITAS BRAWIJAYA",
+    "program": "Statistika"
+  },
+  "3786180473": {
+    "name": "Nanda Susanto",
+    "code": "UB-180473-NANDASUSAN",
+    "hash": "d8d1b43946988c5bfddea8869a08f96607d71fb0592f539d5c14ebc30a16dc13",
+    "signature": "0475cb5d978a79889c84c6b3a947762283b22a639950d73f0a7773c5db2af764",
+    "timestamp": "2026-06-29T19:54:05.629235",
+    "secured_file": "d8d1b43946988c5bfddea8869a08f96607d71fb0592f539d5c14ebc30a16dc13.pdf",
+    "university": "UNIVERSITAS BRAWIJAYA",
+    "program": "Sistem Informasi"
+  },
+  "1510125812": {
+    "name": "Sari Gunawan",
+    "code": "UH-125812-SARIGUNAWA",
+    "hash": "35d8713013e344d4d9533408ad214b102dc28169fd18f4ffff25678c42280927",
+    "signature": "59c7316156e48750fd9100e34e99e67a8d4547a02b0b8f4eb7c6a873d8838d28",
+    "timestamp": "2026-06-29T19:54:05.755600",
+    "secured_file": "35d8713013e344d4d9533408ad214b102dc28169fd18f4ffff25678c42280927.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Biologi"
+  },
+  "8975261451": {
+    "name": "Wawan Putra",
+    "code": "UGM-261451-WAWANPUTRA",
+    "hash": "714abe03e790ba75ec6d497c845231bbcc3e1de3be134712b171733e2ca17783",
+    "signature": "6d403a10424beb495372b3f6b1aae12f02f017d99896620292e6798366bb59ee",
+    "timestamp": "2026-06-29T19:54:05.896509",
+    "secured_file": "714abe03e790ba75ec6d497c845231bbcc3e1de3be134712b171733e2ca17783.pdf",
+    "university": "UNIVERSITAS GADJAH MADA",
+    "program": "Biologi"
+  },
+  "7630120636": {
+    "name": "Budi Utama",
+    "code": "UP-120636-BUDIUTAMA",
+    "hash": "7a061b4a4c3ea5dbe6aa66d2ef9984b0ea3aeba10199e5816a430328818b6ddb",
+    "signature": "410519bd3395d2b0cf356144a11b5e3a2691dbf9607231ad904a4b82010235d0",
+    "timestamp": "2026-06-29T19:54:06.028749",
+    "secured_file": "7a061b4a4c3ea5dbe6aa66d2ef9984b0ea3aeba10199e5816a430328818b6ddb.pdf",
+    "university": "UNIVERSITAS PADJADJARAN",
+    "program": "Teknik Elektro"
+  },
+  "6923700012": {
+    "name": "Kartika Gunawan",
+    "code": "UH-700012-KARTIKAGUN",
+    "hash": "54729b3a9ee1ba3f7baed0d9997f11bf325f44f674ba0a253229be87b55bb0d2",
+    "signature": "adb337807cc55cb5af22c24aebe6aa865c7c748554872c81a9ad44f09851b827",
+    "timestamp": "2026-06-29T19:54:06.155825",
+    "secured_file": "54729b3a9ee1ba3f7baed0d9997f11bf325f44f674ba0a253229be87b55bb0d2.pdf",
+    "university": "UNIVERSITAS HASANUDDIN",
+    "program": "Manajemen"
+  },
   "1": {
     "name": "1",
-    "hash": "fbcb6c4c2b1a30a9f21c518188e0260b7690ff8b394f2eacac03a192e37e8caa",
-    "signature": "acd7ca42b25baa6fa6a50d48b3abf6d05a521b142da5a743cb96fdfb704430b9",
-    "timestamp": "2026-06-29T07:21:11.337648",
-    "secured_file": "1_1_SECURED.pdf"
+    "code": "1",
+    "hash": "b30ff68d1a855da42579b139c0ef1c3b8b11a550b33cd25b39deb79f7212f134",
+    "signature": "fbf84271e9187ae0dbbf9b6b4085362c9a859a515cff5b3de37929527a522d98",
+    "timestamp": "2026-06-30T22:40:27.513433",
+    "secured_file": "b30ff68d1a855da42579b139c0ef1c3b8b11a550b33cd25b39deb79f7212f134.pdf",
+    "details": {
+      "nik": "1",
+      "phone": "1",
+      "address": "1",
+      "photo": "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",
+      "coord": "35.2852491, 139.6616694"
+    }
+  },
+  "111": {
+    "name": "111",
+    "code": "111",
+    "hash": "a4dc548f5e3ee861d09e0e43215bb75e53dcdab4cd1ad439a6cbf888cfae7b46",
+    "signature": "3e287aabc3697b0b1292a02a007ab13d2544931f7021be53df5d54e580d8747a",
+    "timestamp": "2026-06-29T20:04:57.208516",
+    "secured_file": "a4dc548f5e3ee861d09e0e43215bb75e53dcdab4cd1ad439a6cbf888cfae7b46.pdf"
+  },
+  "0110224237": {
+    "name": "hudzaifah arrantisi",
+    "code": "1234",
+    "hash": "7c2e3e597a00640162542d0ea148cac8b60d83e2cb9e392dd0e0ff2478ca8b29",
+    "signature": "fcc8cb0b01ee3abe7611126f3f46bfe91d1466b18236f483edae76957748104e",
+    "timestamp": "2026-06-30T22:41:32.394135",
+    "secured_file": "7c2e3e597a00640162542d0ea148cac8b60d83e2cb9e392dd0e0ff2478ca8b29.pdf",
+    "details": {
+      "nik": "3174040506040002",
+      "phone": "085219545503",
+      "address": "sddadsasdhasdgiedqw",
+      "photo": "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",
+      "coord": ""
+    }
+  },
+  "01": {
+    "name": "ujai",
+    "code": "123",
+    "hash": "c6acb77c626892db5c2c588d8a3e57fb14bd969e0a245ed553edea5305aa6325",
+    "signature": "80d1aea981f6607f3f02bb74be09c29cc4caf0a4258094576593ec285abec9ce",
+    "timestamp": "2026-06-29T22:19:12.171246",
+    "secured_file": "c6acb77c626892db5c2c588d8a3e57fb14bd969e0a245ed553edea5305aa6325.pdf",
+    "details": {
+      "nik": "01",
+      "phone": "01",
+      "address": "Jl. Kebagusan III No.41, RT.3/RW.6, Kebagusan, Ps. Minggu, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12520",
+      "photo": "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",
+      "coord": ""
+    }
   }
 }
