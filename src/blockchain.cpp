@@ -43,10 +43,12 @@ std::string StrictBlockchain::get_last_block_hash() const {
 }
 
 std::string StrictBlockchain::calculate_block_hash(const Block& block) const {
+    // Mencampur master_key (rahasia C++) ke dalam perhitungan hash agar blockchain
+    // tidak bisa diregenerasi/dimanipulasi secara offline oleh orang luar.
     std::string data = block.index + block.previous_hash + block.file_hash +
                       block.encrypted_label + block.student_name +
                       block.student_id + block.timestamp +
-                      block.encrypted_details;
+                      block.encrypted_details + master_key;
     return CryptoUtils::sha256(data);
 }
 

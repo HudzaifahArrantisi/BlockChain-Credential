@@ -74,6 +74,7 @@ void verify_diploma() {
         return;
     }
 
+
     std::cout << "Enter Unique Label: ";
     std::getline(std::cin, unique_label);
 
