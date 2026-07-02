@@ -1,0 +1,503 @@
+╔══════════════════════════════════════════════════════════════╗
+║  PANDUAN DEMO BLOCKCHAIN 3 NODE - STEP BY STEP              ║
+║  SecureChain Diploma Verifier v2.0                          ║
+║                                                              ║
+║  Cocok untuk: Presentasi / Tugas Akhir / Demonstrasi        ║
+╚══════════════════════════════════════════════════════════════╝
+
+================================================================
+PERSYARATAN
+================================================================
+- Windows dengan MinGW g++ + OpenSSL
+- Python 3 dengan pypdf dan reportlab
+- File: BUILD.bat sudah dijalankan (scdv_verifier.exe sudah ada)
+
+
+================================================================
+RINGKASAN 7 LANGKAH
+================================================================
+
+┌─────────────────────────────────────────────────────┐
+│ LANGKAH 1: Generate Key 3 Node                       │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 2: Konfigurasi Port + Peer                    │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 3: Buat File Ijazah Contoh                    │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 4: Start 3 Terminal Node                      │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 5: Generate Key Admin + Register Ijazah       │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 6: Verify + Validate + Cek HTTP API           │
+├─────────────────────────────────────────────────────┤
+│ LANGKAH 7: Failover - Matikan Leader, Lihat Reaksi   │
+└─────────────────────────────────────────────────────┘
+
+
+================================================================
+LANGKAH 1: GENERATE KEY 3 NODE
+================================================================
+
+Buka 1 terminal. Jalankan:
+
+  cd C:\laragon\www\Blockchain
+  mkdir data\nodeA data\nodeB data\nodeC
+  scdv_verifier --keygen data\nodeA
+  scdv_verifier --keygen data\nodeB
+  scdv_verifier --keygen data\nodeC
+
+HASIL:
+  data/nodeA/node_config.json   ← Kunci Node A (rahasia!)
+  data/nodeA/node_xxxx.pub      ← Public key A (bisa dishare)
+  data/nodeB/node_config.json   ← Kunci Node B
+  data/nodeB/node_xxxx.pub      ← Public key B
+  data/nodeC/node_config.json   ← Kunci Node C
+  data/nodeC/node_xxxx.pub      ← Public key C
+
+ISI node_config.json (contoh Node A):
+  {
+    "priv_key": "B4C7D3A4...",       ← RAHASIA! Jangan kasih siapa pun
+    "pub_key": "0459712774...",       ← ALAMAT digital, boleh kasih orang
+    "listen_addr": "0.0.0.0:8545",   ← Port untuk HTTP API
+    "seed_peers": []                  ← Daftar node lain (isi nanti)
+  }
+
+PENJELASAN：
+  Setiap node punya keypair ECDSA (Elliptic Curve Digital Signature
+  Algorithm) - sama seperti Bitcoin. Private key untuk menandatangani
+  blok, public key untuk verifikasi. Short ID (16 karakter) diambil
+  dari hash SHA256 public key.
+
+
+================================================================
+LANGKAH 2: KONFIGURASI PORT + PEER
+================================================================
+
+Ubah file config Node B dan C supaya port tidak bentrok.
+
+--- EDIT data\nodeB\node_config.json ---
+  {
+    "listen_addr": "0.0.0.0:8546",     ← Beda port!
+    "priv_key": "...",
+    "pub_key": "...",
+    "seed_peers": ["127.0.0.1:8545"]   ← Tahu Node A
+  }
+
+--- EDIT data\nodeC\node_config.json ---
+  {
+    "listen_addr": "0.0.0.0:8547",     ← Beda port!
+    "priv_key": "...",
+    "pub_key": "...",
+    "seed_peers": ["127.0.0.1:8545"]   ← Tahu Node A
+  }
+
+KENAPA seed_peers?
+  Seed_peers adalah "alamat tetangga". Saat node baru mulai, dia
+  kirim handshake ke seed_peers untuk:
+  1. Memperkenalkan diri: "Halo, aku Node B"
+  2. Tukar public key
+  3. Masuk ke jaringan Raft
+
+  Node A tidak perlu seed_peers karena dia yang pertama jalan
+  (tidak ada yang perlu dihubungi).
+
+
+================================================================
+LANGKAH 3: BUAT FILE IJAZAH CONTOH
+================================================================
+
+Buat PDF ijazah palsu untuk demo:
+
+  python -c "
+  from reportlab.lib.pagesizes import A4
+  from reportlab.pdfgen import canvas
+  from reportlab.lib.units import mm
+  c = canvas.Canvas('data/ijazah_saya.pdf', pagesize=A4)
+  c.setFont('Helvetica-Bold', 20)
+  c.drawString(50*mm, 250*mm, 'UNIVERSITAS TEKNOLOGI INDONESIA')
+  c.setFont('Helvetica-Bold', 16)
+  c.drawString(50*mm, 235*mm, 'IJAZAH')
+  c.setFont('Helvetica', 12)
+  c.drawString(50*mm, 215*mm, 'Dengan ini menyatakan bahwa:')
+  c.setFont('Helvetica-Bold', 14)
+  c.drawString(50*mm, 200*mm, 'Hudzaifah Rahman')
+  c.setFont('Helvetica', 12)
+  c.drawString(50*mm, 185*mm, 'NIM: 010203')
+  c.drawString(50*mm, 170*mm, 'Program Studi: Teknik Informatika')
+  c.drawString(50*mm, 155*mm, 'Telah menyelesaikan pendidikan')
+  c.drawString(50*mm, 140*mm, 'dan dinyatakan LULUS')
+  c.save()
+  print('OK')
+  "
+
+HASIL: data/ijazah_saya.pdf
+
+
+================================================================
+LANGKAH 4: START 3 NODE (3 TERMINAL BERBEDA)
+================================================================
+
+╔══════════════════════════════════════════════════════════════╗
+║  PENTING!                                                   ║
+║  Buka 3 jendela PowerShell TERPISAH. Jangan di tab sama.   ║
+║  Masing-masing untuk 1 node.                                ║
+╚══════════════════════════════════════════════════════════════╝
+
+TERMINAL 1 (Node A):
+  cd C:\laragon\www\Blockchain
+  scdv_verifier --node data\nodeA\node_config.json
+
+  Output:
+  [*] Starting SecureChain Node
+      Node ID: 9fa90ba4420c8db1
+      Listen:  0.0.0.0:8545
+      Peers:   0
+      Data:    data/node_9fa90ba4420c8db1
+  [NODE ...] Started at 0.0.0.0:8545 | Role: FOLLOWER
+  [NODE ...] Starting election for term 1
+  [NODE ...] Became LEADER for term 1
+  [STATUS] {"blocks":0,"leader_id":"9fa9...","role":"LEADER",...}
+
+  --- YANG TERJADI ---
+  1. Node A baca config, buka port 8545
+  2. Mulai sebagai FOLLOWER (warga biasa)
+  3. Karena tidak ada node lain, setelah ~1 detik:
+     - Election timeout -> jadi CANDIDATE
+     - Minta suara -> tidak ada yang vote
+     - Default menang -> jadi LEADER
+  4. Kirim heartbeat tiap 500ms
+  5. Tampilkan status tiap 10 detik
+
+TERMINAL 2 (Node B):
+  cd C:\laragon\www\Blockchain
+  scdv_verifier --node data\nodeB\node_config.json
+
+  Output:
+  [NODE ...] Started at 0.0.0.0:8546 | Role: FOLLOWER
+  [+] Connected to peer 9fa90ba4... @ 127.0.0.1:8545
+
+  --- YANG TERJADI ---
+  1. Node B baca config, buka port 8546
+  2. Baca seed_peers: ["127.0.0.1:8545"]
+  3. Kirim handshake ke Node A:
+     POST http://127.0.0.1:8545/api/peer/hello
+     { "endpoint": "0.0.0.0:8546", "pub_key": "04A86E42..." }
+  4. Node A terima -> tambah Node B ke daftar peer
+  5. Node B terima heartbeat dari Node A (Leader)
+  6. Node B tetap FOLLOWER (patuh)
+
+TERMINAL 3 (Node C):
+  cd C:\laragon\www\Blockchain
+  scdv_verifier --node data\nodeC\node_config.json
+
+  Output sama seperti Node B, beda port (8547).
+
+  --- CATASTROPHE TEST ---
+  Karena Raft election timeout random (1-2 detik), kadang Node C
+  juga ikut pemilihan. Tapi karena sudah ada leader (Node A),
+  Node C akan kalah dan jadi FOLLOWER. Ini NORMAL dalam Raft.
+
+
+================================================================
+LANGKAH 5: GENERATE KEY ADMIN + REGISTER IJAZAH
+================================================================
+
+Ini dilakukan di terminal KEEMPAT (terminal baru, bukan 3 di atas).
+
+--- 5a. Generate key untuk admin ---
+  scdv_verifier --keygen data
+
+  Hasil: data/node_config.json + data/node_xxxx.pub
+
+--- 5b. Register ijazah ---
+  scdv_verifier register "data/ijazah_saya.pdf" ^
+    "UTI-010203-HUDZAIFAH" ^
+    "Hudzaifah Rahman" ^
+    "010203"
+
+  Output:
+  [!] Cannot open blockchain file: data/blockchain.json
+  [+] Diploma registered: 010203 (Hudzaifah Rahman)
+  [+] Blockchain saved to data/blockchain.json
+  STATUS=OK
+  HASH=5f604b45d49039b862bac6798bb043f996fb093649b1e9f6ce8413554c31f5a9
+
+PROSES DI DALAM (register):
+  ┌─────────────────────────────────────────────────────────┐
+  │                                                          │
+  │  1. Baca data/node_config.json                          │
+  │     → Dapat private key + public key                    │
+  │                                                          │
+  │  2. Hash file PDF                                        │
+  │     → SHA256("data/ijazah_saya.pdf")                    │
+  │     → "5f604b45d49039b862bac6798bb043f..."              │
+  │     (SIDIK JARI FILE - kalau file diubah, hash beda)    │
+  │                                                          │
+  │  3. Enkripsi kode unik                                   │
+  │     → ECDH (Elliptic Curve Diffie-Hellman)               │
+  │     → AES-256-CBC                                        │
+  │     → Hasil: "045971...|iv|ciphertext"                   │
+  │     (Kode "UTI-010203-HUDZAIFAH" jadi kode rahasia)      │
+  │                                                          │
+  │  4. Buat blok blockchain                                 │
+  │     index: "0"                                           │
+  │     previous_hash: "0" (blok pertama = genesis)         │
+  │     file_hash: "5f604b45..."                             │
+  │     encrypted_label: "045971...|..."                     │
+  │     student_name: "Hudzaifah Rahman"                     │
+  │     student_id: "010203"                                 │
+  │     creator_id: "04FE7E74..." (public key admin)        │
+  │                                                          │
+  │  5. Tanda tangan digital (ECDSA)                         │
+  │     → sign(private_key, block_hash)                     │
+  │     → signature: "30450221..."                           │
+  │     (BUKTI bahwa blok benar dibuat oleh si pemilik       │
+  │      private key. Siapa pun bisa verifikasi!)            │
+  │                                                          │
+  │  6. Simpan ke blockchain.json                            │
+  │                                                          │
+  └─────────────────────────────────────────────────────────┘
+
+HASIL DI blockchain.json:
+  {
+      "blocks": [{
+          "index": "0",
+          "previous_hash": "0",
+          "file_hash": "5f604b45...",
+          "encrypted_label": "045971...|...",
+          "student_name": "Hudzaifah Rahman",
+          "student_id": "010203",
+          "timestamp": "2026-07-02 17:29:11",
+          "block_hash": "225a3f78...",
+          "creator_id": "04FE7E74...",
+          "signature": "30450221..."
+      }],
+      "validators": []
+  }
+
+
+================================================================
+LANGKAH 6: VERIFY + VALIDATE + CEK HTTP API
+================================================================
+
+--- 6a. VERIFY IJAZAH ---
+  scdv_verifier verify "data/ijazah_saya.pdf" "UTI-010203-HUDZAIFAH"
+
+  Output:
+  STATUS=VERIFIED
+  NAME=Hudzaifah Rahman
+  ID=010203
+  TIME=2026-07-02 17:29:11
+  HASH=5f604b45d49039b862bac6798bb043f996fb093649b1e9f6ce8413554c31f5a9
+
+PROSES DI DALAM (verify):
+  ┌─────────────────────────────────────────────────────────┐
+  │  1. Hash ulang file                                     │
+  │     → SHA256("data/ijazah_saya.pdf") lagi              │
+  │     → "5f604b45..." (harus sama)                        │
+  │                                                          │
+  │  2. Baca blockchain.json                                │
+  │     → Cari blok dengan file_hash yang cocok             │
+  │                                                          │
+  │  3. Decrypt label                                        │
+  │     → ECDH + private_key                                │
+  │     → "UTI-010203-HUDZAIFAH"                            │
+  │                                                          │
+  │  4. DOUBLE LOCK CHECK:                                   │
+  │     LOCK 1 (Integritas): file_hash cocok? ✓              │
+  │     LOCK 2 (Kepemilikan): label cocok? ✓                │
+  │                                                          │
+  │  5. KEDUA LOCK LOLOS → STATUS=VERIFIED ✓                │
+  └─────────────────────────────────────────────────────────┘
+
+--- 6b. FIND by kode unik ---
+  scdv_verifier find "UTI-010203-HUDZAIFAH"
+
+  Output: STATUS=FOUND + data lengkap
+
+--- 6c. FIND by nama + nim ---
+  scdv_verifier find_student "Hudzaifah Rahman" "010203"
+
+  Output: STATUS=FOUND
+
+--- 6d. VALIDATE CHAIN ---
+  scdv_verifier validate
+
+  Output: STATUS=VALID
+
+  PROSES VALIDASI:
+    1. Cek blok pertama (genesis): previous_hash harus "0"
+    2. Cek setiap blok: hash ulang → cocok?
+    3. Cek sambungan: blok[1].prev_hash == blok[0].hash?
+    4. Cek tanda tangan ECDSA (kalau ada)
+    Semua lolos → VALID
+
+--- 6e. CEK VIA HTTP API (ambil dari terminal ke-4) ---
+  curl http://127.0.0.1:8545/api/node/info
+  curl http://127.0.0.1:8546/api/node/info
+  curl http://127.0.0.1:8547/api/node/info
+
+  Output:
+  {"blocks":0,"leader_id":"xxx","listener":"...",
+   "node_id":"xxx","role":"LEADER/FOLLOWER","term":5}
+
+--- 6f. CEK BLOCKCHAIN VIA HTTP ---
+  curl http://127.0.0.1:8545/api/blockchain/sync
+
+  Output: JSON full blockchain
+
+--- 6g. CEK STATUS VIA CLI ---
+  scdv_verifier --status
+  scdv_verifier --validators
+
+
+================================================================
+LANGKAH 7: FAILOVER - MATIKAN LEADER
+================================================================
+
+Ini bagian paling seru! Demonstrasi Raft consensus.
+
+--- 7a. Cek siapa leader sekarang ---
+  curl http://127.0.0.1:8545/api/node/info
+  curl http://127.0.0.1:8546/api/node/info
+  curl http://127.0.0.1:8547/api/node/info
+
+  Cari yang role-nya "LEADER".
+
+--- 7b. Matikan leader ---
+  Ke terminal si leader. Tekan Ctrl+C.
+  Atau via PowerShell:
+    $connections = netstat -ano | Select-String "8547" | Select-String "LISTENING"
+    $pid = ($connections -split '\s+')[-1]
+    Stop-Process -Id $pid -Force
+
+--- 7c. Tunggu 3-5 detik ---
+  YANG TERJADI di background:
+  ┌─────────────────────────────────────────────────────────┐
+  │  1. Leader mati → stop kirim heartbeat                  │
+  │                                                          │
+  │  2. Node follower tidak terima heartbeat                 │
+  │     selama ~2 detik (election timeout)                   │
+  │                                                          │
+  │  3. Seorang follower jadi CANDIDATE:                     │
+  │     "Waktunya habis! Aku jadi calon pemimpin!"           │
+  │     → Term naik (misal dari 73 ke 74)                   │
+  │                                                          │
+  │  4. Candidate minta suara ke follower lain:               │
+  │     POST /api/raft/request_vote                          │
+  │     { term: 74, candidate_id: "xxx", ... }               │
+  │                                                          │
+  │  5. Follower lain setuju:                                 │
+  │     "Term 74 lebih tinggi dari 73. Aku vote!"            │
+  │                                                          │
+  │  6. Candidate menang → jadi LEADER baru:                  │
+  │     "Aku pemimpin baru untuk term 74!"                   │
+  │     → Kirim heartbeat ke follower                        │
+  └─────────────────────────────────────────────────────────┘
+
+--- 7d. Cek status lagi ---
+  curl http://127.0.0.1:8546/api/node/info
+  → role: "LEADER" (yang tadinya follower)
+  curl http://127.0.0.1:8545/api/node/info
+  → role: "FOLLOWER", leader_id: "node_baru"
+
+  KESIMPULAN: Sistem tetap BERJALAN walau leader mati!
+  Ini yang disebut FAULT TOLERANCE.
+
+
+================================================================
+BONUS: JALANKAN VIA GUI
+================================================================
+
+Kalau mau pake tampilan klik-klik:
+
+  RUN.bat
+
+Atau:
+
+  python gui/app.py
+
+Tab Kampus → Upload & Register:
+  1. Klik area upload → pilih data/ijazah_saya.pdf
+  2. NIM: 010203 → klik "Cari PDDIKTI" (otomatis isi data)
+  3. Kode unik: UTI-010203-HUDZAIFAH
+  4. Isi NIK, No. Telepon, Alamat
+  5. Klik "Register & Secure"
+  → PDF dicap, dikunci password, dicatat ke blockchain
+
+Tab Verifikasi:
+  1. Isi Nama, NIM, Kode Unik
+  2. Klik "VERIFY CREDENTIAL"
+  → Muncul popup hasil + preview PDF
+
+
+================================================================
+TROUBLESHOOTING
+================================================================
+
+MASALAH: "Address already in use" pas start node
+  SOLUSI: Ganti port di listen_addr atau matikan proses lama:
+    netstat -ano | findstr "8545"
+    Stop-Process -Id <PID> -Force
+
+MASALAH: Node tidak connect ke peer
+  SOLUSI: Pastikan IP dan port benar. Coba:
+    curl http://127.0.0.1:8545/api/node/info
+  Kalau tidak ada response, node belum jalan.
+
+MASALAH: STATUS=NOT_FOUND saat verify
+  SOLUSI: Pastikan kode unik sama persis (case sensitive).
+    scdv_verifier find "KODE-UNIK-LENGKAP"
+
+MASALAH: Blockchain corrupt
+  SOLUSI: Hapus data/blockchain.json dan register ulang.
+    Remove-Item data\blockchain.json -Force
+
+
+================================================================
+RINGKASAN PERINTAH
+================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│ PERSIAPAN                                                    │
+│ BUILD.bat                      → Compile semua kode C++     │
+│ scdv_verifier --keygen data    → Generate keypair admin     │
+├─────────────────────────────────────────────────────────────┤
+│ JALANKAN NODE                                                 │
+│ scdv_verifier --node data\nodeA\node_config.json → Port 8545│
+│ scdv_verifier --node data\nodeB\node_config.json → Port 8546│
+│ scdv_verifier --node data\nodeC\node_config.json → Port 8547│
+├─────────────────────────────────────────────────────────────┤
+│ OPERASI DOKUMEN                                               │
+│ scdv_verifier register <file> <kode> <nama> <nim>          │
+│ scdv_verifier verify   <file> <kode>                        │
+│ scdv_verifier find     <kode>                               │
+│ scdv_verifier find_student <nama> <nim>                     │
+│ scdv_verifier validate                                       │
+├─────────────────────────────────────────────────────────────┤
+│ INFORMASI                                                     │
+│ scdv_verifier --status       → Status chain                 │
+│ scdv_verifier --validators   → Daftar validator             │
+│ curl http://localhost:8545/api/node/info  → Status node     │
+│ curl http://localhost:8545/api/blockchain/sync → Full chain │
+├─────────────────────────────────────────────────────────────┤
+│ GUI                                                           │
+│ RUN.bat                     → Buka GUI                      │
+│ python gui/app.py           → Buka GUI manual               │
+└─────────────────────────────────────────────────────────────┘
+
+
+================================================================
+SELESAI - DEMO BERHASIL!
+================================================================
+
+Semua langkah sudah dijalankan:
+  ✅ 3 node berjalan (A, B, C)
+  ✅ Raft memilih leader
+  ✅ Ijazah di-register (hash + encrypt + sign)
+  ✅ Ijazah di-verify (decrypt + cocokkan)
+  ✅ Blockchain di-validate (hash chain + signature)
+  ✅ HTTP API merespon
+  ✅ Failover: leader mati → leader baru terpilih otomatis
+
+Sistem blockchain distributed siap dipresentasikan!

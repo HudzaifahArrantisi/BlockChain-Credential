@@ -59,18 +59,19 @@ class ScrollFrame(tk.Frame):
                                lambda e: self.canvas.configure(
                                    scrollregion=self.canvas.bbox("all")))
         self.canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw",
-                                  width=self.canvas.winfo_reqwidth() or 440)
+                                  tags=("inner",))
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
         self.bind("<Enter>", self._bind_mouse)
         self.bind("<Leave>", self._unbind_mouse)
-        self.bind("<Configure>", self._resize_width)
+        self.canvas.bind("<Configure>", self._resize_width)
+        self.after(10, self._resize_width)
 
     def _resize_width(self, event=None):
         w = self.canvas.winfo_width() - 20
         if w > 100:
-            self.canvas.itemconfig(1, width=w)
+            self.canvas.itemconfig("inner", width=w)
 
     def _bind_mouse(self, event=None):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
@@ -598,14 +599,18 @@ class App(tk.Tk):
         def _int_enter(e):
             int_inner.config(bg="#1a2235")
             for child in int_inner.winfo_children():
-                try: child.config(bg="#1a2235")
-                except: pass
+                try:
+                    child.config(bg="#1a2235")
+                except tk.TclError:
+                    pass
 
         def _int_leave(e):
             int_inner.config(bg=CARD2)
             for child in int_inner.winfo_children():
-                try: child.config(bg=CARD2)
-                except: pass
+                try:
+                    child.config(bg=CARD2)
+                except tk.TclError:
+                    pass
 
         for w in (int_btn, int_inner, int_lbl):
             w.bind("<Enter>", _int_enter)
@@ -624,22 +629,25 @@ class App(tk.Tk):
         self._select_nav("upload")
 
     def _hover_nav(self, key):
-        if key == self._current_nav:
-            return
         b, ind, inner, lbl, sub = self._nav_buttons[key]
         for w in (b, inner): w.config(bg="#1a2235")
         lbl.config(bg="#1a2235", fg=TXT)
         sub.config(bg="#1a2235")
-        ind.config(bg="#1a2235")
+        if key != self._current_nav:
+            ind.config(bg="#1a2235")
 
     def _unhover_nav(self, key):
-        if key == self._current_nav:
-            return
         b, ind, inner, lbl, sub = self._nav_buttons[key]
-        for w in (b, inner): w.config(bg=CARD2)
-        lbl.config(bg=CARD2, fg=TXT2)
-        sub.config(bg=CARD2)
-        ind.config(bg=CARD2)
+        if key == self._current_nav:
+            for w in (b, inner): w.config(bg="#161d30")
+            lbl.config(bg="#161d30", fg=ACCENT)
+            sub.config(bg="#161d30")
+            ind.config(bg=ACCENT)
+        else:
+            for w in (b, inner): w.config(bg=CARD2)
+            lbl.config(bg=CARD2, fg=TXT2)
+            sub.config(bg=CARD2)
+            ind.config(bg=CARD2)
 
     def _select_nav(self, key):
         if self._current_nav and self._current_nav in self._nav_buttons:
@@ -713,6 +721,8 @@ class App(tk.Tk):
         self._main_pages["upload"] = upload_page
         self._main_pages["verify"] = verify_page
 
+        self._select_nav(self._current_nav or "upload")
+
     def _update_clock(self):
         now = datetime.now().strftime("%d %b %Y    %H:%M:%S")
         try:
@@ -771,6 +781,61 @@ class App(tk.Tk):
 
         return _Proxy(e, outer)
 
+    def _file_drop_zone(self, parent, entry_widget, text="Click to select file"):
+        outer = tk.Frame(parent, bg=BORDER, padx=1, pady=1, cursor="hand2")
+
+        def on_hover(e=None):
+            outer.config(bg=ACCENT)
+            inner.config(bg="#1a2235")
+            for w in inner.winfo_children():
+                try:
+                    w.config(bg="#1a2235")
+                except tk.TclError:
+                    pass
+
+        def on_unhover(e=None):
+            outer.config(bg=BORDER)
+            inner.config(bg=CARD2)
+            for w in inner.winfo_children():
+                try:
+                    w.config(bg=CARD2)
+                except tk.TclError:
+                    pass
+
+        def on_click(e=None):
+            p = filedialog.askopenfilename(filetypes=[
+                ("All Files", "*.*"),
+                ("PDF Documents", "*.pdf"),
+                ("Images", "*.png;*.jpg;*.jpeg;*.gif;*.bmp"),
+                ("Documents", "*.docx;*.doc;*.txt"),
+            ])
+            if p:
+                entry_widget.delete(0, "end")
+                entry_widget.insert(0, p)
+                icon_lbl.config(text="\u2714", fg=EMERALD)
+                txt_lbl.config(text=os.path.basename(p), fg=ACCENT)
+                sub_lbl.config(text=os.path.dirname(p), fg=MUTED)
+
+        inner = tk.Frame(outer, bg=CARD2, pady=18)
+        inner.pack(fill="x", expand=True)
+
+        icon_lbl = tk.Label(inner, text="\u2b06", bg=CARD2, fg=MUTED,
+                            font=("Segoe UI", 16))
+        icon_lbl.pack(pady=(2, 2))
+        txt_lbl = tk.Label(inner, text=text, bg=CARD2, fg=TXT2,
+                           font=("Segoe UI", 9))
+        txt_lbl.pack()
+        sub_lbl = tk.Label(inner, text="Click to browse files", bg=CARD2, fg=MUTED,
+                           font=("Segoe UI", 7))
+        sub_lbl.pack(pady=(0, 2))
+
+        for w in (outer, inner, icon_lbl, txt_lbl, sub_lbl):
+            w.bind("<Enter>", on_hover)
+            w.bind("<Leave>", on_unhover)
+            w.bind("<Button-1>", on_click)
+
+        return outer
+
     # ─── UPLOAD PAGE ─────────────────────────────────────────────────────────
     def _build_upload_page(self, parent):
         page = tk.Frame(parent, bg=BG)
@@ -779,41 +844,37 @@ class App(tk.Tk):
         inner = sf.scroll_frame
         inner.config(padx=24, pady=20)
 
-        # Document section
-        self._section(inner, "\U0001f4c4  DOCUMENT INFORMATION",
+        # Two-column layout — responsive with proportional weights
+        content_row = tk.Frame(inner, bg=BG)
+        content_row.pack(fill="both", expand=True)
+        content_row.grid_columnconfigure(0, weight=3)
+        content_row.grid_columnconfigure(1, weight=2)
+        content_row.grid_rowconfigure(0, weight=1)
+
+        left_col = tk.Frame(content_row, bg=BG)
+        left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+
+        right_col = tk.Frame(content_row, bg=BG)
+        right_col.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+
+        # ── LEFT COLUMN: FORM ─────────────────────────────────────────────
+        self._section(left_col, "DOCUMENT INFORMATION",
                       "Select the diploma file to secure and register")
-        card1 = self._card(inner)
+        card1 = self._card(left_col)
 
         file_row = tk.Frame(card1, bg=CARD)
         file_row.pack(fill="x", pady=(0, 0))
         tk.Label(file_row, text="File Dokumen / Ijazah", bg=CARD, fg=TXT2,
-                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 3))
-        file_input = tk.Frame(file_row, bg=CARD)
-        file_input.pack(fill="x")
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 6))
+        self.k_file = tk.Entry(file_row)
+        self.k_file.pack_forget()
+        self._file_drop_zone(file_row, self.k_file,
+                             text="Click to select diploma file").pack(fill="x")
 
-        f_outer = tk.Frame(file_input, bg=BORDER, padx=1, pady=1)
-        f_outer.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        f_inner = tk.Frame(f_outer, bg=CARD2)
-        f_inner.pack(fill="x")
-        self.k_file = tk.Entry(f_inner, font=("Segoe UI", 10), bg=CARD2, fg=TXT,
-                               insertbackground=ACCENT, relief="flat",
-                               highlightthickness=0, bd=0)
-        self.k_file.pack(fill="x", padx=12, pady=9)
-        self.k_file.bind("<FocusIn>",  lambda e: f_outer.config(bg=ACCENT))
-        self.k_file.bind("<FocusOut>", lambda e: f_outer.config(bg=BORDER))
-
-        tk.Button(file_input, text="\u29c6  Browse", command=self._pick_kampus,
-                  bg=CARD2, fg=ACCENT, relief="flat",
-                  font=("Segoe UI Semibold", 9), padx=18, pady=9,
-                  cursor="hand2", activebackground=ACCENT, activeforeground=BG,
-                  highlightbackground=BORDER, highlightthickness=1).pack(side="right")
-
-        # Student info section
-        self._section(inner, "\U0001f393  STUDENT INFORMATION",
+        self._section(left_col, "STUDENT INFORMATION",
                       "Enter details or auto-fetch from PDDIKTI national registry")
-        card2 = self._card(inner)
+        card2 = self._card(left_col)
 
-        # NIM
         nim_wrap = tk.Frame(card2, bg=CARD)
         nim_wrap.pack(fill="x", pady=(0, 10))
         tk.Label(nim_wrap, text="NIM (Nomor Induk Mahasiswa)", bg=CARD, fg=TXT2,
@@ -846,7 +907,6 @@ class App(tk.Tk):
                                        font=("Segoe UI", 7))
         self._pddikti_badge.pack(anchor="w", padx=2)
 
-        # Two-col row: Nama + Kode Unik
         row2 = tk.Frame(card2, bg=CARD)
         row2.pack(fill="x", pady=(0, 8))
         name_col = tk.Frame(row2, bg=CARD)
@@ -861,12 +921,10 @@ class App(tk.Tk):
                  font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 3))
         self.k_code = self._mini_entry(code_col, "\U0001f511")
 
-        # Campus
         tk.Label(card2, text="Nama Kampus", bg=CARD, fg=TXT2,
                  font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(4, 3))
         self.k_campus = self._mini_entry(card2, "\U0001f3db")
 
-        # Row: NIK + Phone
         row3 = tk.Frame(card2, bg=CARD)
         row3.pack(fill="x", pady=(8, 0))
         nik_col = tk.Frame(row3, bg=CARD)
@@ -881,15 +939,13 @@ class App(tk.Tk):
                  font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(0, 3))
         self.k_phone = self._mini_entry(phone_col, "\U0001f4de")
 
-        # Address
         tk.Label(card2, text="Alamat", bg=CARD, fg=TXT2,
                  font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=2, pady=(8, 3))
         self.k_address = self._mini_entry(card2, "\U0001f4cd")
 
-        # Photo section
-        self._section(inner, "\U0001f4f7  FOTO MAHASISWA",
+        self._section(left_col, "FOTO MAHASISWA",
                       "Optional — embedded in credential record")
-        card3 = self._card(inner)
+        card3 = self._card(left_col)
         photo_row = tk.Frame(card3, bg=CARD)
         photo_row.pack(fill="x")
         ph_o = tk.Frame(photo_row, bg=BORDER, padx=1, pady=1)
@@ -910,8 +966,7 @@ class App(tk.Tk):
                   cursor="hand2", activebackground=ACCENT, activeforeground=BG,
                   highlightbackground=BORDER, highlightthickness=1).pack(side="right")
 
-        # Action buttons
-        action_frame = tk.Frame(inner, bg=BG, pady=10)
+        action_frame = tk.Frame(left_col, bg=BG, pady=10)
         action_frame.pack(fill="x")
 
         self.k_clear_btn = tk.Button(action_frame, text="\u21ba  Clear Form",
@@ -928,16 +983,16 @@ class App(tk.Tk):
                   padx=28, pady=11, cursor="hand2",
                   activebackground="#0ea875").pack(side="right")
 
-        # Output log
-        self._section(inner, "\u29c6  OUTPUT LOG", "Registration process output")
-        log_card = tk.Frame(inner, bg=CARD, highlightbackground=BORDER,
+        # ── RIGHT COLUMN: OUTPUT LOG ───────────────────────────────────────
+        self._section(right_col, "\u29c6  OUTPUT LOG", "Registration process output")
+        log_card = tk.Frame(right_col, bg=CARD, highlightbackground=BORDER,
                             highlightthickness=1)
-        log_card.pack(fill="x", pady=(0, 20))
+        log_card.pack(fill="both", expand=True, pady=(0, 20))
         log_hdr = tk.Frame(log_card, bg=CARD2, pady=6)
         log_hdr.pack(fill="x")
         tk.Label(log_hdr, text="  \u25b6 CONSOLE OUTPUT", bg=CARD2, fg=MUTED,
                  font=("Consolas", 7, "bold")).pack(side="left")
-        self.k_out = tk.Text(log_card, height=5, bg="#07090f", fg="#7aa2c0",
+        self.k_out = tk.Text(log_card, bg="#07090f", fg="#7aa2c0",
                              relief="flat", font=("Consolas", 8), wrap="word",
                              padx=14, pady=8, bd=0, highlightthickness=0,
                              insertbackground=ACCENT)
@@ -1259,8 +1314,10 @@ class App(tk.Tk):
             self.after(0, lambda: self._set_status("Registration failed.", CRIMSON))
         finally:
             if temp_secured and os.path.exists(temp_secured):
-                try: os.remove(temp_secured)
-                except: pass
+                try:
+                    os.remove(temp_secured)
+                except OSError:
+                    pass
 
     def _register_done(self, res, out, sig, code):
         if res.get("STATUS") == "OK":

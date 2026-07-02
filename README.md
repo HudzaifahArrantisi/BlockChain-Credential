@@ -1,321 +1,316 @@
-# SecureChain Diploma Verifier (SCDV)
+# SecureChain Diploma Verifier (SCDV) v2.0
 
-🔐 **Sistem Verifikasi Ijazah Berbasis Blockchain** — Cegah Pemalsuan & Jamin Keaslian Dokumen
-
----
-
-## 📌 Latar Belakang Masalah
-
-### Pemalsuan Dokumen Ijazah Marak
-
-Pemalsuan ijazah dan sertifikat pendidikan menjadi masalah serius di Indonesia:
-
-- **Pencari kerja** menaikkan kualifikasi dengan ijazah palsu
-- **Institusi pendidikan** kesulitan memverifikasi keaslian dokumen alumni
-- **Perekrut/HRD** tidak punya cara pasti membedakan ijazah asli vs palsu
-- **Kerugian finansial & reputasi** untuk universitas dan individu tertipu
-
-**Contoh kasus:**
-- Seorang manajer "lulus" dari universitas top ternyata ijazahnya palsu
-- Alumni palsu mengakses networking eksklusif universitas
-- CV palsu dideteksi setelah dipekerjakan (biaya training terbuang)
-
-### Solusi Konvensional Tidak Efisien
-
-- ❌ Menghubungi registrar kampus (lama, biaya admin)
-- ❌ File PDF polos (mudah diubah di Photoshop)
-- ❌ Tanda tangan digital (bisa di-copy atau dipalsukan)
-- ❌ Database terpusat (rentan hack, single point of failure)
+**Sistem Verifikasi Ijazah Berbasis Blockchain Distributed** — Cegah Pemalsuan & Jamin Keaslian Dokumen dengan Konsensus Raft + ECDSA Cryptography
 
 ---
 
-## 🎯 Apa itu SecureChain Diploma Verifier?
+## 📌 Buat Apa Ini?
 
-**SecureChain** adalah sistem **verifikasi ijazah berbasis blockchain** yang menjamin:
+Mencegah pemalsuan ijazah. Setiap dokumen yang didaftarkan akan:
 
-1. **Keaslian (Authenticity)** — Ijazah pasti berasal dari kampus resmi
-2. **Integritas (Integrity)** — Dokumen tidak boleh diubah meski 1 bit
-3. **Kepemilikan (Ownership)** — Hanya pemilik ijazah yang tahu kode unik (hanya diketahui alumni + kampus)
-4. **Immutability** — Blockchain mencegah pembobolan data lama
-
-### Cara Kerjanya: Double-Lock System
-
-**Lock 1 — SHA-256 (Integritas File)**
-- Kampus menghitung hash unik dari file PDF ijazah
-- Saat diverifikasi: hash ulang file → cocok dengan rekaman di blockchain?
-- **Jika 1 byte file berubah** (edit nama, nilai, dll) → hash beda → **GAGAL VERIFIKASI**
-
-**Lock 2 — AES-256 (Kepemilikan Unik)**
-- Kode unik (mis: `UGM-010203-HUDZAIFAH`) dienkripsi & disimpan di blockchain
-- Saat diverifikasi: **hanya dengan kode unik yg benar** → lock terbuka
-- **File PDF juga dikunci dengan password = kode unik** → tidak bisa dibuka tanpa kode
-
-### Mengapa Blockchain?
-
-- ✅ **Immutable Ledger** — Perubahan blok lama merusak chain → deteksi langsung
-- ✅ **Terdesentralisasi** — Bukan satu database, tapi linked-hash chain
-- ✅ **Audit Trail** — Setiap registrasi tercatat dengan timestamp
-- ✅ **Open Verification** — Siapa saja bisa verifikasi tanpa izin kampus
+1. **Dihash** (SHA-256) — kalau file diubah 1 bit saja, hash beda → ketahuan
+2. **Dienkripsi** dengan kode unik — hanya mahasiswa + kampus yang tahu kode-nya
+3. **Ditandatangani** dengan ECDSA — bukti siapa yang mendaftarkan
+4. **Dicatat di Blockchain** — data tidak bisa diubah retroaktif
+5. **Direplikasi ke semua Node** — lewat Raft consensus, tidak ada single point of failure
 
 ---
 
-## 🏗️ Arsitektur
+## 🚀 Panduan Langkah demi Langkah (Pemula)
 
-```
-GUI (Python Tkinter)     ← Tampilan user-friendly
-        ↓
-PDF Processing           ← Cap visual + metadata + password lock
-        ↓
-C++ Core (scdv_verifier.exe)
-  ├─ Crypto (SHA-256, AES-256 OpenSSL)
-  ├─ Blockchain (linked-hash validation)
-  └─ Storage (data/blockchain.json)
-```
+### Persiapan (Hanya Sekali)
 
-**Keamanan dijamin oleh C++**, tidak ada kompromi:
-- ✅ Enkripsi AES-256 native PDF (Adobe/Chrome standar)
-- ✅ SHA-256 cryptographic hashing (standard industri)
-- ✅ Linked-hash blockchain (impossible to retroactively alter)
-
----
-
-## 📚 Cara Penggunaan
-
-### Untuk Pihak Kampus (Admin) — Mendaftarkan Ijazah
-
-**Langkah 1: Buka aplikasi**
-```cmd
-RUN.bat
-```
-Atau manual: `python gui/app.py`
-
-**Langkah 2: Buat atau Pilih File Ijazah**
-- Tab **🏛 Kampus — Daftarkan** (otomatis terbuka)
-- Klik **"Buat PDF Contoh"** untuk test, atau pilih PDF ijazah asli
-
-**Langkah 3: Isi Data Mahasiswa**
-```
-Kode Unik        : UGM-010203-HUDZAIFAH  (format: KAMPUS-NIM-NAMA)
-Nama Mahasiswa   : Hudzaifah 
-NIM              : 010203
-```
-
-**Langkah 4: Klik "🔒 Daftarkan & Amankan"**
-
-**Sistem otomatis:**
-1. ✅ Beri cap visual "SECURECHAIN VERIFIED" pada PDF
-2. ✅ Sisipkan metadata + tanda tangan digital (HMAC-SHA256)
-3. ✅ **Kunci PDF dengan password = kode unik** (hanya bisa dibuka dengan kode)
-4. ✅ Hitung SHA-256 dari file
-5. ✅ Catat ke blockchain (linked-hash)
-6. ✅ **Simpan ke folder `secured/`** dengan manifest.json berisi hash
-
-**Output:**
-```
-✅ BERHASIL DIDAFTARKAN
-─────────────────────
-File aman      : /path/to/ijazah_SECURED.pdf
-SHA-256        : a1b2c3d4e5f6g7h8...
-Tanda tangan   : aad5a5e675f66002...
-Kode pembuka   : UGM-010203-HUDZAIFAH
-
-📁 Disimpan ke  : secured/ folder
-📋 Manifest     : secured/manifest.json
-```
-
-**Langkah 5: Berikan file ke mahasiswa**
-- File: `ijazah_SECURED.pdf` (file ini sudah aman & terkunci)
-- Hanya bisa dibuka dengan kode unik (yang mahasiswa sudah tahu)
-
----
-
-### Untuk Publik / Perekrut (User) — Memverifikasi Ijazah
-
-**Langkah 1: Buka aplikasi** → Tab **🔍 Verifikasi**
-
-**Langkah 2: Upload File Ijazah**
-- Pilih file `*_SECURED.pdf` yang diterima dari alumni
-
-**Langkah 3: Masukkan Kode Unik**
-- Tanya alumni: "Kode unik Anda apa?"
-- Contoh: `UGM-010203-HUDZAIFAH`
-
-**Langkah 4: Klik "🔍 Verifikasi Sekarang"**
-
-**Hasil:**
-
-**🟢 IJAZAH ASLI — TERVERIFIKASI**
-```
-Nama : Hudzaifah Rahman
-NIM  : 010203
-Terdaftar : 2026-06-29 06:42:20
-
-Double-Lock: Integritas SHA-256 ✓   Kode Unik ✓
-File bisa dibuka dengan kode: ✓
-```
-
-**🔴 TIDAK VALID / PALSU**
-```
-Penyebab salah satu dari:
-• File sudah diubah (hash tidak cocok)
-• Kode unik salah
-• Dokumen tidak terdaftar di blockchain
-```
-
-**Bonus: Cek Integritas Blockchain**
-- Klik **"Cek Integritas Blockchain"** → pastikan chain belum pernah dimanipulasi
-
----
-
-## 🚀 Instalasi & Setup
-
-### Prerequisites
-
-Sistem otomatis detect yang ada di komputer Anda:
-- ✅ **g++ 15.2.0** (compiler C++)
-- ✅ **OpenSSL 3.6.1** (enkripsi)
-- ✅ **Python 3.10** (GUI)
-
-### Step 1: Build C++ Core (sekali saja)
-
-**Windows:**
-```cmd
-BUILD.bat
-```
-
-**Linux/WSL:**
-```bash
-bash build_gcc.sh
-```
-
-Output: `scdv_verifier.exe` (static, ~9MB, portabel)
-
-### Step 2: Install Dependency GUI (sekali saja)
-
+**Langkah 1: Install Python dependencies**
 ```cmd
 install_deps.bat
 ```
+Atau manual: `python -m pip install --user pypdf reportlab`
 
-Atau manual:
-```bash
-python -m pip install --user pypdf reportlab
+**Langkah 2: Build program C++**
+```cmd
+BUILD.bat
+```
+Tunggu sampai muncul `BUILD SUKSES -> scdv_verifier.exe`
+
+### Cara Pakai — 3 Mode
+
+---
+
+## 🅰️ Mode Sederhana (CLI Langsung)
+
+Ini yang paling gampang. Semua di command line.
+
+### 1. Generate Kunci (wajib sekali)
+```cmd
+scdv_verifier --keygen data
+```
+Output: `data/node_config.json` — ini kunci privat/publik node Anda.
+
+### 2. Daftarkan Ijazah (Admin)
+```cmd
+scdv_verifier register "ijazah.pdf" "UGM-001-HUDZAIFAH" "Hudzaifah" "001"
+```
+Penjelasan argumen:
+| Argumen | Contoh | Artinya |
+|---------|--------|---------|
+| `ijazah.pdf` | file ijazah | Path ke file PDF |
+| `UGM-001-HUDZAIFAH` | kode unik | Format: KAMPUS-NIM-NAMA |
+| `Hudzaifah` | nama | Nama mahasiswa |
+| `001` | NIM | Nomor induk mahasiswa |
+
+### 3. Verifikasi Ijazah (User/Perekrut)
+```cmd
+scdv_verifier verify "ijazah_SECURED.pdf" "UGM-001-HUDZAIFAH"
+```
+Kalau keluar `STATUS=VERIFIED` berarti ASLI. Kalau error berarti PALSU/DIUBAH.
+
+### 4. Cari Data Ijazah
+```cmd
+scdv_verifier find "UGM-001-HUDZAIFAH"        # cari berdasarkan kode unik
+scdv_verifier find_student "Hudzaifah" "001"   # cari berdasarkan nama + NIM
 ```
 
-### Step 3: Jalankan Aplikasi
+### 5. Cek Keaslian Blockchain
+```cmd
+scdv_verifier validate
+```
+Kalau `STATUS=VALID` berarti blockchain tidak pernah dirusak.
 
+---
+
+## 🅱️ Mode GUI (Klik-klik)
+
+**Jalankan:**
 ```cmd
 RUN.bat
 ```
+Atau: `python gui/app.py`
 
-Atau:
-```bash
-python gui/app.py
-```
+**Tab Kampus — Daftarkan Ijazah:**
+1. Pilih file PDF
+2. Isi kode unik, nama, NIM
+3. Klik "Daftarkan & Amankan"
 
-**GUI langsung terbuka** — siap digunakan! ✅
+**Tab Verifikasi — Cek Keaslian:**
+1. Upload file `*_SECURED.pdf`
+2. Masukkan kode unik
+3. Klik "Verifikasi"
 
 ---
 
-## 📁 Struktur Folder
+## 🅲️ Mode Jaringan (Multi-Node / Distributed)
+
+Untuk setup beberapa komputer/node yang saling sinkron.
+
+### Topologi
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐
+│ Node A   │◄───►│ Node B   │◄───►│ Node C   │
+│ (Leader) │     │(Follower)│     │(Follower)│
+└──────────┘     └──────────┘     └──────────┘
+     │                │                │
+     └────────────────┴────────────────┘
+                   HTTP API
+```
+
+### Jalankan Node Pertama (Leader)
+```cmd
+scdv_verifier --node data\node_config.json
+```
+Node akan:
+- Listen di `0.0.0.0:8545`
+- Memilih dirinya jadi LEADER (karena cuma 1 node)
+- Siap menerima proposal blok
+
+### Jalankan Node Kedua (di komputer lain / terminal beda)
+1. Generate keypair: `scdv_verifier --keygen data`
+2. Edit `data\node_config.json` — tambahkan peer:
+```json
+{
+  "priv_key": "...",
+  "pub_key": "...",
+  "listen_addr": "0.0.0.0:8545",
+  "seed_peers": ["http://192.168.1.10:8545"]
+}
+```
+3. Jalankan: `scdv_verifier --node data\node_config.json`
+
+### Operasi di Mode Jaringan
+```cmd
+# Lihat status node (leader/follower, term, peers)
+scdv_verifier --status
+
+# Lihat daftar validator
+scdv_verifier --validators
+
+# Register tetap sama — otomatis proposal ke leader
+scdv_verifier register "ijazah.pdf" "UGM-001-HUDZAIFAH" "Hudzaifah" "001"
+```
+
+### API HTTP (untuk integrasi aplikasi lain)
+
+| Method | Endpoint | Fungsi |
+|--------|----------|--------|
+| GET | `/status` | Status node + blockchain |
+| GET | `/chain` | Full blockchain |
+| GET | `/peers` | Daftar peer |
+| POST | `/propose` | Proposal blok baru (JSON) |
+| POST | `/vote` | Raft RequestVote RPC |
+| POST | `/append` | Raft AppendEntries RPC |
+| GET | `/sync` | Sinkronisasi blockchain lengkap |
+
+Contoh:
+```cmd
+curl http://localhost:8545/status
+curl http://localhost:8545/chain
+```
+
+---
+
+## 🔒 Cara Kerja Keamanan
+
+### ECDSA (Elliptic Curve Digital Signature Algorithm)
+Setiap node punya **keypair unik** (secp256k1 — kurva yang sama dengan Bitcoin):
+- **Private key** → untuk menandatangani blok + mendekripsi data
+- **Public key** → untuk verifikasi tanda tangan + enkripsi data
+
+Setiap blok ditandatangani oleh pembuatnya. Kalau ada yang mengubah isi blok, tanda tangan jadi tidak valid.
+
+### ECIES (Elliptic Curve Integrated Encryption Scheme)
+Data sensitif dienkripsi dengan:
+1. Buat kunci sementara (ephemeral key)
+2. Gabung kunci sementara + public key penerima → shared secret (ECDH)
+3. Shared secret → AES-256-CBC key
+4. Simpan: `kunci_publik_sementara | IV | ciphertext`
+
+Hanya pemilik private key yang bisa mendekripsi.
+
+### Raft Consensus
+Algoritma untuk menjaga semua node punya data yang sama:
+1. **Leader Election** — node pilih pemimpin
+2. **Log Replication** — leader kirim blok baru ke semua follower
+3. **Safety** — hanya leader yang sah bisa nambah blok
+
+---
+
+## 📁 Struktur File Penting
 
 ```
 SecureChain-Diploma-Verifier/
-├── BUILD.bat / build_gcc.sh      ← Build C++ core
-├── install_deps.bat              ← Install Python deps
-├── RUN.bat                       ← Jalankan GUI
-├── CARA_PAKAI.txt                ← Panduan singkat
+├── BUILD.bat                        ← Build C++ (double-click)
+├── install_deps.bat                 ← Install Python deps
+├── RUN.bat                          ← Jalankan GUI
+├── scdv_verifier.exe                ← Program utama (hasil build)
 │
-├── scdv_verifier.exe             ← Executable (built)
-├── gui/
-│   ├── app.py                    ← GUI (Tkinter)
-│   ├── pdf_secure.py             ← Cap + password lock PDF
-│   └── scdv_core.py              ← Jembatan GUI ↔ C++
-│
-├── src/ & include/               ← C++ source code
 ├── data/
-│   └── blockchain.json           ← Ledger (otomatis dibuat)
-└── secured/                      ← Output folder (otomatis dibuat)
-    ├── manifest.json             ← Hash tracking
-    └── *.pdf                     ← File-file terenkripsi
+│   ├── blockchain.json              ← Ledger blockchain
+│   ├── node_config.json             ← Keypair + konfigurasi node
+│   └── node_<id>.pub                ← Public key (untuk share)
+│
+├── gui/
+│   ├── app.py                       ← GUI Tkinter
+│   ├── pdf_secure.py                ← Cap + password PDF
+│   └── scdv_core.py                 ← Jembatan GUI → C++
+│
+├── src/                             ← Source code C++
+└── include/                         ← Header files C++
+    ├── ecdsa_utils.h                ← ECDSA + ECDH + ECIES
+    ├── node.h                       ← Raft consensus + HTTP
+    ├── blockchain.h                 ← Blockchain logic
+    ├── crypto_utils.h               ← SHA-256 + AES
+    └── document_handler.h           ← File I/O
 ```
 
 ---
 
-## 🔒 Keamanan Berlapis
+## 🎓 Skenario Lengkap
 
-| Layer | Teknologi | Fungsi |
-|-------|-----------|--------|
-| **Integritas** | SHA-256 | File tidak bisa diubah 1 bit |
-| **Kepemilikan** | AES-256-CBC | Hanya pemilik kode unik bisa buka |
-| **Autentikasi** | HMAC-SHA256 | Metadata ditandatangani kampus |
-| **Blockchain** | Linked-Hash | Chain tidak bisa di-edit retroaktif |
-| **Persistence** | JSON | Data portabel, audit-able |
+### Di Kampus (Admin — Daftarkan Ijazah Hudzaifah)
+
+1. Buka terminal: `cd C:\laragon\www\Blockchain`
+2. Build: `BUILD.bat`
+3. Generate key: `scdv_verifier --keygen data`
+4. Register ijazah:
+   ```
+   scdv_verifier register "C:\ijazah_hudzaifah.pdf" "UGM-010203-HUDZAIFAH" "Hudzaifah Rahman" "010203"
+   ```
+5. Output: `STATUS=OK` — ijazah tercatat di blockchain
+
+### Di Perusahaan (HRD — Verifikasi Ijazah Pelamar)
+
+1. Buka terminal: `cd C:\laragon\www\Blockchain`
+2. Build (kalum belum): `BUILD.bat`
+3. Generate key: `scdv_verifier --keygen data`
+4. Verifikasi:
+   ```
+   scdv_verifier verify "C:\ijazah_hudzaifah_SECURED.pdf" "UGM-010203-HUDZAIFAH"
+   ```
+5. Kalau `STATUS=VERIFIED` → aman. Kalau error → hati-hati!
+
+### Dengan Jaringan 3 Node
+
+**Terminal 1 — Node A (Leader):**
+```
+scdv_verifier --keygen dataA
+scdv_verifier --node dataA\node_config.json
+```
+
+**Terminal 2 — Node B (Follower):**
+```
+scdv_verifier --keygen dataB
+```
+Edit `dataB\node_config.json` — tambah `"seed_peers": ["http://127.0.0.1:8545"]`
+```
+scdv_verifier --node dataB\node_config.json
+```
+
+**Terminal 3 — Register via API:**
+```
+curl -X POST http://localhost:8545/propose -H "Content-Type: application/json" -d "{\"file_hash\":\"abc...\",\"encrypted_label\":\"xyz...\",\"student_name\":\"Hudzaifah\",\"student_id\":\"001\"}"
+```
 
 ---
 
-## ⚠️ Catatan Produksi
+## ❓ Troubleshooting untuk Pemula
 
-Sebelum go-live di kampus, ganti kunci rahasia:
+| Masalah | Solusi |
+|---------|--------|
+| `'g++' not recognized` | Jalankan `BUILD.bat` (dia auto-detect g++ path) |
+| `OpenSSL not found` | Pastikan folder `C:\ProgramData\mingw64\mingw64\opt\` ada |
+| `STATUS=NOT_FOUND` | Kode unik salah, coba `find` dulu untuk cek |
+| `STATUS=ERROR MESSAGE=...` | Baca pesan error-nya, biasanya ada petunjuk |
+| Node tidak bisa connect | Cek IP + port, firewall, pastikan kedua node jalan |
+| GUI hitam/error | `python -m pip install --user pypdf reportlab` |
+| Blockchain corrupt/hash mismatch | Hapus `data\blockchain.json` dan register ulang |
 
-**1. C++ Master Key** (file: `src/main.cpp`, line ~7)
-```cpp
-const std::string MASTER_KEY = "UBAH_DENGAN_KUNCI_KUAT_32CHAR";
-```
+---
 
-**2. PDF Signing Key** (file: `gui/pdf_secure.py`, line ~10)
-```python
-CAMPUS_SIGNING_KEY = b"UBAH_DENGAN_KUNCI_KUAT_32CHAR"
-```
+## ⚠️ Sebelum Produksi
 
-Generate kunci kuat:
-```bash
+Generate kunci kuat untuk production:
+```cmd
 openssl rand -base64 32
 ```
+Ganti di `gui/pdf_secure.py` variable `CAMPUS_SIGNING_KEY`.
 
 ---
 
-## 🎓 Contoh End-to-End
+## 🧪 Quick Test (Cek Semua Berfungsi)
 
-### Skenario: Alumni Hudzaifah Ingin Verifikasi Ijazahnya
+```cmd
+BUILD.bat
+scdv_verifier --keygen data
+scdv_verifier register "gui\app.py" "TEST-001" "Test User" "001"
+scdv_verifier find "TEST-001"
+scdv_verifier verify "gui\app.py" "TEST-001"
+scdv_verifier validate
+scdv_verifier --status
+scdv_verifier --validators
+```
 
-**Minggu 1 (Admin UGM):**
-1. Admin buka aplikasi → Tab "Kampus"
-2. Upload ijazah Hudzaifah (PDF polos dari universitas database)
-3. Isi: NIM `010203`, Nama `Hudzaifah Rahman`, Kode `UGM-010203-HUDZAIFAH`
-4. Klik "Daftarkan & Amankan"
-5. **Sistem auto:** cap + tanda tangan + kunci PDF + catat blockchain
-6. File `ijazah_SECURED.pdf` ready → kirim ke Hudzaifah via email
-
-**Minggu 2 (Hudzaifah Apply Kerja):**
-1. Hudzaifah lampirkan file `ijazah_SECURED.pdf` ke aplikasi kerja
-2. HRD terima file + tanya kode: "Apa kode unik ijazah Anda?"
-3. Hudzaifah beri kode: `UGM-010203-HUDZAIFAH`
-4. HRD buka aplikasi → Tab "Verifikasi"
-5. Upload file + masuk kode
-6. **Klik Verifikasi** → **🟢 IJAZAH ASLI TERVERIFIKASI**
-7. HRD confident → Hudzaifah lolos tahap verifikasi
+Kalau semua `STATUS=OK/VERIFIED/VALID` — sistem siap dipakai! 🎉
 
 ---
 
-## 🛠️ Troubleshooting
-
-**"OpenSSL not found"**
-→ Download dari https://slproweb.com/products/Win32OpenSSL.html (Win64 Light)
-
-**"MSVC compiler not found"**
-→ Install Visual Studio Community 2022 dengan C++ development tools
-
-**"GUI tidak mau jalan"**
-→ Pastikan `scdv_verifier.exe` sudah built: `BUILD.bat` dulu
-
----
-
-## 📖 Dokumentasi Lengkap
-
-- `CARA_PAKAI.txt` — Panduan singkat (5 menit)
-- `AGENTS.md` — Technical architecture (untuk developer)
-- `BUILD_INSTRUCTIONS.md` — Build details per platform (untuk developer)
-
----
-
-**Dibuat dengan ❤️ menggunakan C++17 + Python + Blockchain**
+**SecureChain v2.0 — Distributed Blockchain Document Verification**
+C++17 + OpenSSL + Python Tkinter + Raft Consensus + ECDSA secp256k1

@@ -47,12 +47,12 @@ def _make_stamp(width: float, height: float, code: str, name: str) -> PdfReader:
 
     c.saveState()
     c.translate(width - 270, 40)
-    c.setStrokeColor(Color(0.7, 0, 0, alpha=0.9))
-    c.setFillColor(Color(0.7, 0, 0, alpha=0.08))
-    c.setLineWidth(2)
+    c.setStrokeColor(Color(0.85, 0.05, 0.05, alpha=0.95))
+    c.setFillColor(Color(0.85, 0.05, 0.05, alpha=0.12))
+    c.setLineWidth(2.5)
     c.roundRect(0, 0, 250, 70, 8, stroke=1, fill=1)
 
-    c.setFillColor(Color(0.7, 0, 0, alpha=0.95))
+    c.setFillColor(Color(0.85, 0.05, 0.05, alpha=0.98))
     c.setFont("Helvetica-Bold", 11)
     c.drawString(12, 52, "SECURECHAIN VERIFIED")
     c.setFont("Helvetica", 8)
@@ -70,7 +70,7 @@ def _make_stamp(width: float, height: float, code: str, name: str) -> PdfReader:
     c.translate(width / 2, height / 2)
     c.rotate(45)
     c.setFont("Helvetica-Bold", 46)
-    c.setFillColor(Color(0.7, 0, 0, alpha=0.06))
+    c.setFillColor(Color(0.85, 0.05, 0.05, alpha=0.07))
     c.drawCentredString(0, 0, "SECURECHAIN")
     c.restoreState()
 

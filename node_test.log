@@ -1,0 +1,11 @@
+[*] Starting SecureChain Node
+    Node ID: 5568ad5b03c9498e
+    Listen:  0.0.0.0:8545
+    Peers:   0
+    Data:    data/node_5568ad5b03c9498e
+[NODE 5568ad5b03c9498e] Started at 0.0.0.0:8545 | Role: FOLLOWER
+
+[NODE 5568ad5b03c9498e] Running. Press Ctrl+C to stop.
+
+[NODE 5568ad5b03c9498e] Starting election for term 1
+[NODE 5568ad5b03c9498e] Became LEADER for term 1

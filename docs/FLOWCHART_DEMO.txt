@@ -1,0 +1,636 @@
+╔══════════════════════════════════════════════════════════════╗
+║            FLOWCHART DEMO BLOCKCHAIN SISTEM                 ║
+║            SecureChain Diploma Verifier v2.0                ║
+╚══════════════════════════════════════════════════════════════╝
+
+                        ╔═══════════════╗
+                        ║  PERSIAPAN    ║
+                        ╚═══════════════╝
+                               │
+                               ▼
+              ╔─────────────────────────────────╗
+              │    1. BUILD PROGRAM              │
+              │     Jalankan: BUILD.bat           │
+              │     Hasil: scdv_verifier.exe      │
+              └─────────────────────────────────┘
+                               │
+                               ▼
+              ╔─────────────────────────────────╗
+              │    2. GENERATE KEY 3 NODE        │
+              │     scdv_verifier --keygen dataA │
+              │     scdv_verifier --keygen dataB │
+              │     scdv_verifier --keygen dataC │
+              │                                  │
+              │    Hasil di folder data/:         │
+              │     nodeA/node_config.json        │
+              │     nodeB/node_config.json        │
+              │     nodeC/node_config.json        │
+              └─────────────────────────────────╘
+                               │
+                               ▼
+              ╔─────────────────────────────────╗
+              │    3. EDIT KONFIGURASI            │
+              │     - NodeA: port 8545            │
+              │     - NodeB: port 8546            │
+              │            + seed_peers NodeA     │
+              │     - NodeC: port 8547            │
+              │            + seed_peers NodeA     │
+              └─────────────────────────────────╘
+                               │
+                               ▼
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+                    ▼                     ▼
+           ╔══════════════╗     ╔═════════════════════╗
+           ║  DEMO CEPAT  ║     ║  DEMO LENGKAP       ║
+           ║  (1 terminal)║     ║  (3 node, 3 terminal)║
+           ╚══════════════╝     ╚═════════════════════╝
+                    │                     │
+                    ▼                     ▼
+    ┌───────────────────────────┐  ┌──────────────────────────┐
+    │ PILIHAN A:                │  │ PILIHAN B:               │
+    │ PAKAI CLI LANGSUNG        │  │ PAKAI 3 NODE RAFT        │
+    │ (tidak perlu node)        │  │ (simulasi distributed)   │
+    └───────────────────────────┘  └──────────────────────────┘
+                    │                     │
+                    ▼                     ▼
+    ┌───────────────────────────┐  ┌──────────────────────────┐
+    │ 4a. REGISTER CLI          │  │ 4b. START NODE A         │
+    │ scdv_verifier register    │  │   (Leader -> port 8545)  │
+    │   "file.pdf"              │  │                          │
+    │   "KODE-UNIK"             │  │  Terminal 1:             │
+    │   "Nama" "NIM"            │  │   scdv_verifier --node   │
+    │                           │  │    dataA\node_config     │
+    │ ┌──────────────────────┐  │  │                          │
+    │ │ PROSES:               │  │  │ Node A: FOLLOWER        │
+    │ │ - Hash file (SHA256) │  │  │   -> CANDIDATE           │
+    │ │ - Encrypt label      │  │  │   -> LEADER              │
+    │ │   (ECDH + AES)       │  │  │                          │
+    │ │ - Sign block (ECDSA) │  │  │ ┌──────────────────────┐ │
+    │ │ - Simpan blockchain  │  │  │ │ PROSES RAFT:         │ │
+    │ └──────────────────────┘  │  │ │ 1. Node mulai        │ │
+    └───────────────────────────┘  │ │    sebagai FOLLOWER  │ │
+                    │              │ │ 2. Tidak ada kabar   │ │
+                    ▼              │ │    dari leader       │ │
+    ┌───────────────────────────┐  │ │ 3. Jadi CANDIDATE   │ │
+    │ 5a. VERIFY CLI            │  │ │ 4. Minta suara       │ │
+    │ scdv_verifier verify      │  │ │    ke peer lain      │ │
+    │   "file.pdf"              │  │ │ 5. Menang suara      │ │
+    │   "KODE-UNIK"             │  │ │ 6. Jadi LEADER       │ │
+    │                           │  │ └──────────────────────┘ │
+    │ ┌──────────────────────┐  │  └──────────────────────────┘
+    │ │ PROSES:               │  │            │
+    │ │ - Hash ulang file    │  │            ▼
+    │ │ - Cari di blockchain │  │  ┌──────────────────────────┐
+    │ │ - Decrypt label      │  │  │ 5b. START NODE B         │
+    │ │   (ECDH + priv_key)  │  │  │   (Follower -> port 8546)│
+    │ │ - Cocokkan hash+label│  │  │                          │
+    │ └──────────────────────┘  │  │  Terminal 2:             │
+    │                           │  │   scdv_verifier --node   │
+    │ HASIL: STATUS=VERIFIED ✓ │  │    dataB\node_config      │
+    └───────────────────────────┘  │                          │
+                    │              │ Node B: FOLLOWER         │
+                    ▼              │   -> connect ke Node A   │
+    ┌───────────────────────────┐  │   -> Handshake: kirim    │
+    │ 6a. VALIDATE              │  │      public key + info   │
+    │ scdv_verifier validate    │  │   -> Terima heartbeat    │
+    │                           │  │   -> Tetap FOLLOWER      │
+    │ CEK:                      │  └──────────────────────────┘
+    │ - Hash setiap blok ✓      │            │
+    │ - Link blok ke-1 ke-2 ✓   │            ▼
+    │ - Tanda tangan ECDSA ✓    │  ┌──────────────────────────┐
+    │                           │  │ 6b. START NODE C         │
+    │ HASIL: STATUS=VALID ✓     │  │   (Follower -> port 8547)│
+    └───────────────────────────┘  │                          │
+                    │              │  Terminal 3:             │
+                    ▼              │   scdv_verifier --node   │
+                    │              │    dataC\node_config     │
+                    ▼              │                          │
+         ┌──────────────────┐      │ Node C: FOLLOWER         │
+         │     SELESAI      │      │   -> Juga connect Node A │
+         │  Demo berhasil!  │      │   -> Sinkron blockchain  │
+         └──────────────────┘      └──────────────────────────┘
+                                             │
+                                             ▼
+                            ┌──────────────────────────────────┐
+                            │ 7b. CEK STATUS SEMUA NODE        │
+                            │                                  │
+                            │ curl http://localhost:8545/...   │
+                            │ curl http://localhost:8546/...   │
+                            │ curl http://localhost:8547/...   │
+                            │                                  │
+                            │ Lihat: role, peers, blocks, term │
+                            └──────────────────────────────────┘
+                                             │
+                                             ▼
+                            ┌──────────────────────────────────┐
+                            │ 8b. SIMULASI LEADER FAILOVER     │
+                            │                                  │
+                            │  1. MATIKAN NODE A (Leader)      │
+                            │     -> Ctrl+C di terminal 1      │
+                            │                                  │
+                            │  2. TUNGGU 3-5 DETIK             │
+                            │     -> Node B & C tidak terima   │
+                            │        heartbeat dari Node A     │
+                            │                                  │
+                            │  3. NODE B JADI LEADER BARU      │
+                            │     -> Node B: CANDIDATE         │
+                            │     -> Node B minta suara ke C   │
+                            │     -> Node C setuju             │
+                            │     -> Node B jadi LEADER        │
+                            │     -> Term naik (contoh: 5)     │
+                            │                                  │
+                            │  4. CEK LAGI                     │
+                            │     curl http://localhost:8546/..│
+                            │     -> role=LEADER, term=5       │
+                            └──────────────────────────────────┘
+                                             │
+                                             ▼
+                            ┌──────────────────────────────────┐
+                            │ 9b. REGISTER via API (opsional)  │
+                            │                                  │
+                            │  curl -X POST                   │
+                            │   http://leader:port/           │
+                            │   api/blockchain/propose        │
+                            │   -H "Content-Type: appl/json"  │
+                            │   -d '{                         │
+                            │       "file_hash":"...",        │
+                            │       "encrypted_label":"...",   │
+                            │       "student_name":"Nama",    │
+                            │       "student_id":"001"        │
+                            │    }'                            │
+                            └──────────────────────────────────┘
+                                             │
+                                             ▼
+                            ┌──────────────────────────────────┐
+                            │ 10b. SELESAI                     │
+                            │  Matikan semua node:             │
+                            │   Ctrl+C di tiap terminal        │
+                            │                                  │
+                            │  Atau:                           │
+                            │   Get-Process scdv_verifier |    │
+                            │     Stop-Process                 │
+                            └──────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════╗
+║              DIAGRAM ALUR DATA DALAM SISTEM                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌──────────┐    REGISTER     ┌──────────────┐    ┌──────────────┐
+│  FILE    │ ───────────────→│    C++ CORE   │───→│  blockc      │
+│  IJAZAH  │  1. Hash file   │  scdv_verify  │    │  hain.json,  │
+│  .pdf    │  2. ECDH enc    │  er.exe       │    │              │
+└──────────┘  3. Sign block  │               │    │  data/node_  │
+                              │               │    │  <id>/      │
+┌──────────┐    VERIFY       │               │    └──────────────┘
+│  FILE    │ ───────────────→│               │           │
+│  IJAZAH  │  1. Hash file   │               │           ▼
+│  .pdf    │  2. Cari blok   │               │    ┌──────────────┐
+└──────────┘  3. ECDH dec    │               │    │   HTTP API   │
+              │  4. Cocokkan  │               │    │   port 8545  │
+┌──────────┐                 │               │    └──────────────┘
+│  KODE    │ ───────────────→│               │           │
+│  UNIK    │  Input user     │               │           ▼
+└──────────┘                 └──────────────┘    ┌──────────────┐
+                                                 │   RAFT       │
+                                                 │   Consensus  │
+                                                 │              │
+                                                 │  Leader      │
+                                                 │    ↕         │
+                                                 │  Follower    │
+                                                 │    ↕         │
+                                                 │  Follower    │
+                                                 └──────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║              FLOW STATE MESIN RAFT CONSENSUS                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+                  ┌─────────────────────┐
+                  │                     │
+         ┌────────▼────────┐            │
+         │                 │            │
+         │   FOLLOWER      │◄───────────┤
+         │   (Biasa)       │            │
+         │                 │            │
+         └────────┬────────┘            │
+                  │                     │
+     ┌────────────┴────────────┐       │
+     │                        │       │
+     │  Election timeout       │       │
+     │  (>1-2 detik no        │       │
+     │   heartbeat)           │       │
+     │                        │       │
+     └────────────┬────────────┘       │
+                  │                     │
+         ┌────────▼────────┐            │
+         │                 │            │
+         │   CANDIDATE     │            │
+         │   (Calon)       │            │
+         │                 │            │
+         └────────┬────────┘            │
+                  │                     │
+     ┌────────────┴────────────┐       │
+     │                        │       │
+     │  RequestVote ke peer   │       │
+     │  ────────────────► peer│      │
+     │                        │       │
+     │  Dapat suara ≥ 50%?   │       │
+     │  ┌─── Ya ───┐  ┌─ Tidak┤      │
+     │  │          │  │      │       │
+     ▼  ▼          │  ▼      │       │
+  ┌──────────┐     │  ┌──────────┐   │
+  │          │     │  │ Kembali  │   │
+  │  LEADER  │     │  │ ke       │───┤
+  │          │     │  │ FOLLOWER │   │
+  └────┬─────┘     │  └──────────┘   │
+       │           │                │
+  ┌────┴─────┐     │                │
+  │ Kirim    │     │                │
+  │ heartbeat│     │                │
+  │ tiap     │     │                │
+  │ 500ms    │     │                │
+  │ ke peer  │     │                │
+  └────┬─────┘     │                │
+       │           │                │
+       ▼           │                │
+  ┌──────────┐     │                │
+  │ Terima   │     │                │
+  │ proposal │     │                │
+  │ blok baru│     │                │
+  │          │     │                │
+  │ Kirim ke │     │                │
+  │ semua    │     │                │
+  │ follower │     │                │
+  └──────────┘     │                │
+       │           │                │
+       └───────────┴────────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║              PENJELASAN STEP-BY-STEP                        ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 1: PERSIAPAN                                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 1.1 BUILD PROGRAM                                            │
+│      ─────────────────                                        │
+│      Jalankan: BUILD.bat                                      │
+│                                                              │
+│      Apa yang terjadi?                                        │
+│      - g++ (compiler C++) membaca semua file .cpp            │
+│      - main.cpp, crypto_utils.cpp, ecdsa_utils.cpp,          │
+│        blockchain.cpp, document_handler.cpp, node.cpp        │
+│      - Menghubungkan dengan OpenSSL (libssl.a, libcrypto.a)  │
+│      - Output: scdv_verifier.exe (~9MB, static/portabel)     │
+│                                                              │
+│      Kenapa static?                                           │
+│      - Biar bisa jalan di komputer lain tanpa install        │
+│        library tambahan                                       │
+│                                                              │
+│ 1.2 GENERATE KEY (ECDSA secp256k1)                            │
+│      ─────────────────────────────────                        │
+│      scdv_verifier --keygen dataA                              │
+│                                                              │
+│      Apa yang terjadi di dalam?                               │
+│      - OpenSSL membuat keypair secp256k1                      │
+│        (kurva yang sama dengan Bitcoin)                       │
+│      - Private key (64 karakter hex) → RAHASIA               │
+│      - Public key (130 karakter hex) → BISA DISHARE          │
+│      - Short ID: SHA256(pub_key) ambil 16 karakter pertama   │
+│                                                              │
+│      ┌──────────────────────────────────────────────────┐    │
+│      │ HASIL FILE:                                       │    │
+│      │ dataA/node_config.json  ← Kunci + konfigurasi    │    │
+│      │ dataA/node_<id>.pub     ← Public key (untuk      │    │
+│      │                           dikasih ke node lain)  │    │
+│      └──────────────────────────────────────────────────┘    │
+│                                                              │
+│ 1.3 KONFIGURASI NODE                                         │
+│      ─────────────────────                                     │
+│      Setiap node perlu punya port beda + tau alamat node     │
+│      lain:                                                   │
+│                                                              │
+│      Node A (Leader):                                        │
+│        → port 8545, seed_peers: []                           │
+│      Node B (Follower):                                      │
+│        → port 8546, seed_peers: ["127.0.0.1:8545"]          │
+│      Node C (Follower):                                      │
+│        → port 8547, seed_peers: ["127.0.0.1:8545"]          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 2: JALANKAN NODE                                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 2.1 START NODE A (Leader)                                    │
+│      ─────────────────────────                                  │
+│      Terminal 1:                                              │
+│        scdv_verifier --node dataA\node_config.json            │
+│                                                              │
+│      Proses startup:                                          │
+│      1. Baca config: priv_key, pub_key, listen_addr          │
+│      2. Buat folder data/node_<id>/                           │
+│      3. Load blockchain.json (kalau ada)                     │
+│      4. Buat HTTP server (Winsock2) di port 8545             │
+│      5. Mulai consensus loop di thread terpisah              │
+│                                                              │
+│      Status awal: FOLLOWER                                    │
+│      → Karena tidak ada leader, tunggu 1-2 detik             │
+│      → Election timeout → jadi CANDIDATE                     │
+│      → Minta suara ke peer (tidak ada peer)                  │
+│      → Menang (default, karena cuma dia)                    │
+│      → Jadi LEADER                                           │
+│                                                              │
+│      Output di terminal:                                      │
+│        [NODE d123c16d99e34ace] Started at 0.0.0.0:8545 ...   │
+│        [NODE d123c16d99e34ace] Starting election for term 1  │
+│        [NODE d123c16d99e34ace] Became LEADER for term 1      │
+│                                                              │
+│ 2.2 START NODE B (Follower)                                  │
+│      ────────────────────────────                               │
+│      Terminal 2:                                              │
+│        scdv_verifier --node dataB\node_config.json            │
+│                                                              │
+│      Proses startup:                                          │
+│      1. Sama: baca config, buat server di port 8546          │
+│      2. Load seed_peers: ["127.0.0.1:8545"]                  │
+│      3. Kirim handshake ke Node A: POST /api/peer/hello      │
+│         { "endpoint": "0.0.0.0:8546", "pub_key": "..." }     │
+│      4. Node A terima → tambah Node B ke daftar peer         │
+│      5. Node B balas → Node A tahu Node B                    │
+│      6. Node B terima heartbeat dari Node A                  │
+│      7. Node B tetap FOLLOWER (patuh ke leader)              │
+│                                                              │
+│ 2.3 START NODE C (Follower)                                  │
+│      ────────────────────────────                               │
+│      Terminal 3:                                              │
+│        scdv_verifier --node dataC\node_config.json            │
+│                                                              │
+│      Proses sama seperti Node B, beda port (8547)            │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 3: CEK STATUS                                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ Buka terminal baru (ke-4)                                    │
+│                                                              │
+│ curl http://127.0.0.1:8545/api/node/info                     │
+│ { "node_id": "d123...", "role": "LEADER", "blocks": 0,      │
+│   "peers": ["127.0.0.1:8546", "127.0.0.1:8547"], ... }     │
+│                                                              │
+│ curl http://127.0.0.1:8546/api/node/info                     │
+│ { "node_id": "b6f6...", "role": "FOLLOWER", ... }           │
+│                                                              │
+│ curl http://127.0.0.1:8547/api/node/info                     │
+│ { "node_id": "ad78...", "role": "FOLLOWER", ... }           │
+│                                                              │
+│ API Endpoints yang tersedia:                                 │
+│  GET  /api/node/info          → Status node                  │
+│  GET  /api/blockchain/sync    → Full blockchain              │
+│  POST /api/raft/request_vote  → Raft election                │
+│  POST /api/raft/append_entries→ Raft replication             │
+│  POST /api/blockchain/propose → Proposal blok baru           │
+│  POST /api/peer/hello         → Handshake peer               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 4: SIMULASI RAFT FAILOVER                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 4.1 MATIKAN LEADER (Node A)                                  │
+│      ────────────────────────────                              │
+│      Terminal 1: Ctrl+C                                       │
+│                                                              │
+│ 4.2 YANG TERJADI:                                            │
+│      ───────────────────                                        │
+│      1. Node A berhenti → socket ditutup, thread berhenti    │
+│      2. Node B: tidak terima heartbeat dari Node A           │
+│      3. Node C: tidak terima heartbeat dari Node A           │
+│      4. Setelah ~2 detik (election timeout):                 │
+│                                                              │
+│         Node B: "Waktunya habis! Aku jadi CANDIDATE!"        │
+│         Node B: "Term naik ke 2. Aku minta suara!"           │
+│         Node B: POST /api/raft/request_vote ke Node C        │
+│                  { term:2, candidate_id:"b6f6...", ... }     │
+│                                                              │
+│         Node C: "Term 2 lebih tinggi dari term 1.            │
+│                   Aku setuju vote Node B!"                   │
+│         Node C: Response { term:2, vote_granted:true }       │
+│                                                              │
+│         Node B: "Suara cukup! Aku jadi LEADER!"              │
+│         Node B: Kirim heartbeat ke Node C                    │
+│                  POST /api/raft/append_entries                │
+│                  { term:2, leader_id:"b6f6..." }             │
+│                                                              │
+│ 4.3 CEK STATUS BARU:                                         │
+│      ───────────────────────                                    │
+│      curl http://127.0.0.1:8546/api/node/info                 │
+│      → role: "LEADER", term: 2                               │
+│                                                              │
+│      curl http://127.0.0.1:8547/api/node/info                 │
+│      → role: "FOLLOWER", leader_id: "b6f6..."               │
+│                                                              │
+│ KESIMPULAN:                                                   │
+│   Sistem tetap jalan walau leader mati!                       │
+│   Node lain langsung pilih leader baru.                       │
+│   Ini yang disebut FAULT TOLERANCE.                           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 5: REGISTER + VERIFY (via CLI biasa)                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ (Ini bisa dilakukan kapan saja, tanpa perlu node jalan)     │
+│                                                              │
+│ 5.1 REGISTER IJAZAH                                          │
+│      ─────────────────                                         │
+│      scdv_verifier register                                  │
+│        "ijazah.pdf"                                          │
+│        "UGM-010203-HUDZAIFAH"                                │
+│        "Hudzaifah Rahman"                                    │
+│        "010203"                                              │
+│                                                              │
+│      ALUR LENGKAP:                                            │
+│      1. Baca node_config.json                                │
+│      2. Ambil priv_key + pub_key                             │
+│      3. Hash file: SHA256("ijazah.pdf")                      │
+│         → "e1996c375ba383e3..."                              │
+│      4. Encrypt label: ECDH + AES-256-CBC                    │
+│         → "0400FF1B72|f806fd81|998f5551..."                  │
+│      5. Encrypt details: sama (ECDH + AES)                   │
+│      6. Buat blok: index, prev_hash, timestamp, dll          │
+│      7. Hitung hash blok                                     │
+│      8. ECDSA sign: sign(priv_key, block_hash)               │
+│      9. Simpan ke blockchain.json                            │
+│                                                              │
+│      FORMAT BLOK:                                             │
+│        {                                                      │
+│          index: "0",                                          │
+│          previous_hash: "0",                                  │
+│          file_hash: "e1996c3...",                             │
+│          encrypted_label: "0400FF1B...",                      │
+│          student_name: "Hudzaifah Rahman",                    │
+│          student_id: "010203",                                │
+│          timestamp: "2026-07-01 22:25:14",                    │
+│          term: 0,                                             │
+│          creator_id: "04CBE3E7...",                           │
+│          signature: "30450221..."                             │
+│        }                                                      │
+│                                                              │
+│      HASIL: STATUS=OK, HASH=e1996c375ba383e3...              │
+│                                                              │
+│ 5.2 VERIFY IJAZAH                                            │
+│      ────────────────                                           │
+│      scdv_verifier verify                                    │
+│        "ijazah.pdf"                                          │
+│        "UGM-010203-HUDZAIFAH"                                │
+│                                                              │
+│      ALUR LENGKAP:                                            │
+│      1. Hash ulang file → "e1996c375ba383e3..."              │
+│      2. Baca blockchain.json                                 │
+│      3. Cari blok dengan file_hash yang cocok                │
+│      4. Decrypt label: ECDH + priv_key                       │
+│         → "UGM-010203-HUDZAIFAH"                             │
+│      5. Cocokkan: label == input user? ✓                     │
+│         Cocokkan: file_hash == hash ulang? ✓                 │
+│      6. KEDUA COCOK → VERIFIED ✓                             │
+│                                                              │
+│      HASIL: STATUS=VERIFIED                                   │
+│      NAME=Hudzaifah Rahman ID=010203                          │
+│                                                              │
+│ 5.3 VALIDATE CHAIN                                           │
+│      ─────────────────                                          │
+│      scdv_verifier validate                                   │
+│                                                              │
+│      ALUR:                                                    │
+│      1. Genesis check: blok-0 previous_hash harus "0"        │
+│      2. Hash check: setiap blok, hitung ulang hashnya        │
+│         → bandingkan dengan block_hash tersimpan             │
+│      3. Link check: blok[i].previous_hash ==                  │
+│         blok[i-1].block_hash                                 │
+│      4. Signature check: verifikasi ECDSA signature          │
+│                                                              │
+│      HASIL: STATUS=VALID                                      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ TAHAP 6: PAKAI GUI (untuk user yang tidak mau CLI)           │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 6.1 JALANKAN GUI                                              │
+│      ──────────────                                             │
+│      RUN.bat                                                   │
+│      atau: python gui/app.py                                   │
+│                                                              │
+│ 6.2 TAB UPLOAD & REGISTER                                     │
+│      ────────────────────────────                               │
+│      1. Klik area upload → pilih PDF ijazah                  │
+│      2. Masukkan NIM → klik "Cari PDDIKTI"                   │
+│         (otomatis isi nama, kampus, prodi)                   │
+│      3. Isi NIK, No. Telepon, Alamat                         │
+│      4. (Opsional) Upload foto                                │
+│      5. Klik "Register & Secure"                              │
+│                                                              │
+│      Proses background:                                       │
+│      1. GUI panggil pdf_secure.stamp_and_secure()            │
+│         → Cap visual "SECURECHAIN VERIFIED"                  │
+│         → Kunci PDF dengan password = kode unik              │
+│      2. GUI panggil scdv_core.register()                     │
+│         → Jalankan: scdv_verifier.exe register ...           │
+│         → Exe auto-load node_config.json                    │
+│         → Hash, encrypt, sign, simpan ke blockchain          │
+│      3. Simpan file secured ke folder secured/                │
+│                                                              │
+│ 6.3 TAB VERIFY                                                │
+│      ────────────                                               │
+│      1. Masukkan Nama, NIM, Kode Unik                        │
+│      2. Klik "VERIFY CREDENTIAL"                              │
+│                                                              │
+│      Proses background:                                       │
+│      1. GUI panggil scdv_core.find_by_label(code)            │
+│      2. GUI cari file secured/ sesuai hash                   │
+│      3. GUI coba buka PDF dengan kode unik                   │
+│      4. Tampilkan popup hasil: VERIFIED / FAILED             │
+│         + preview PDF + data mahasiswa                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ RINGKASAN KONSEP PENTING                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 1. SHA-256 = SIDIK JARI FILE                                  │
+│    - Setiap file punya hash unik                             │
+│    - Kalau 1 bit berubah → hash berubah total               │
+│    - Fungsi: deteksi apakah file sudah diutak-atik           │
+│                                                              │
+│ 2. ECDSA = TANDA TANGAN DIGITAL                              │
+│    - Setiap node punya private key (rahasia) + public key    │
+│    - Sign: bukti bahwa blok benar dibuat oleh node itu      │
+│    - Verify: siapa pun bisa cek tanda tangan pakai public   │
+│      key                                                     │
+│                                                              │
+│ 3. ECDH + AES = ENKRIPSI DATA                                 │
+│    - Kode unik dienkripsi sebelum disimpan ke blockchain     │
+│    - Hanya pemilik private key yang bisa buka (decrypt)      │
+│    - Format: ephemeral_pub_key | IV | ciphertext             │
+│                                                              │
+│ 4. BLOCKCHAIN = LINKED LIST + HASH                           │
+│    - Blok berisi: data + hash blok sendiri + hash blok      │
+│      sebelumnya                                              │
+│    - Kalau ada yang ubah blok ke-0 → hash-nya berubah       │
+│    → blok ke-1 nyimpen hash blok ke-0 → jadi salah          │
+│    → blok ke-2 nyimpen hash blok ke-1 → ikut salah          │
+│    → Rantai putus! Ketahuan semua!                           │
+│                                                              │
+│ 5. RAFT CONSENSUS = PEMILIHAN PEMIMPIN                        │
+│    - FOLLOWER = warga biasa, nunggu perintah                 │
+│    - CANDIDATE = warga yang nyalon jadi pemimpin             │
+│    - LEADER = pemimpin, yang boleh nambah blok               │
+│    - Heartbeat = "Aku masih hidup!" tiap 500ms               │
+│    - Election = kalau leader mati, pilih yang baru           │
+│    - Majority = butuh suara > 50% node                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║   QUICK REFERENCE: PERINTAH + FUNGSI                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│ PERSIAPAN                                                     │
+│ BUILD.bat              → Compile semua source code           │
+│ scdv_verifier --keygen  → Generate keypair ECDSA             │
+├─────────────────────────────────────────────────────────────┤
+│ CLI (tanpa node)                                              │
+│ register "file" "kode" "nama" "nim"     → Daftarkan ijazah   │
+│ verify   "file" "kode"                  → Verifikasi ijazah  │
+│ find     "kode"                         → Cari by kode unik  │
+│ find_student "nama" "nim"               → Cari by nama+nim  │
+│ validate                               → Validasi blockchain│
+│ --status                               → Status node+chain  │
+│ --validators                           → Daftar validator   │
+├─────────────────────────────────────────────────────────────┤
+│ NODE RAFT                                                     │
+│ --node data/node_config.json           → Jalankan node      │
+├─────────────────────────────────────────────────────────────┤
+│ HTTP API (saat node jalan)                                   │
+│ GET  /api/node/info                   → Status node         │
+│ GET  /api/blockchain/sync             → Full blockchain     │
+│ POST /api/blockchain/propose          → Proposal blok baru  │
+│ GET  /api/peer/list                   → Daftar peer         │
+├─────────────────────────────────────────────────────────────┤
+│ GUI                                                           │
+│ RUN.bat                               → Buka GUI            │
+│ python gui/app.py                     → Buka GUI manual     │
+└─────────────────────────────────────────────────────────────┘
