@@ -1381,7 +1381,38 @@ class App(tk.Tk):
                 scan.log_left("No secured files found")
                 scan.log_right("Querying blockchain directly...")
 
-            find_res = scdv_core.find_by_label(code)
+            # Step 1: Multi-node consensus verification
+            scan.log_left("Querying ALL consortium nodes...")
+            multi_res = scdv_core.multi_verify(label=code, name=name, student_id=nim)
+
+            nodes_info = multi_res.get("NODES", [])
+            scan.log_left(f"Nodes contacted: {len(nodes_info)}")
+            for n in nodes_info:
+                ep = n.get("endpoint", "?")
+                st = n.get("status", "?")
+                nm = n.get("name", "")
+                scan.log_left(f"  {ep}: {st}")
+                if st == "VERIFIED":
+                    scan.log_right(f"{nm} verified by {ep}")
+
+            consensus = multi_res.get("CONSENSUS", "0/0")
+            scan.log_right(f"Consensus: {consensus}")
+
+            # Step 2: Check if we have consensus
+            if multi_res.get("STATUS") != "VERIFIED":
+                scan.log_left(f"Consensus failed ({consensus})")
+                scan.log_right("Fallback: single-node lookup")
+                find_res = scdv_core.find_by_label(code)
+            else:
+                # Use multi-node result
+                find_res = {
+                    "STATUS": "FOUND",
+                    "NAME": multi_res.get("NAME", ""),
+                    "ID": multi_res.get("ID", ""),
+                    "TIME": multi_res.get("TIME", ""),
+                    "HASH": multi_res.get("HASH", ""),
+                    "DETAILS": "",
+                }
 
             if find_res.get("STATUS") == "FOUND":
                 block_name = find_res.get("NAME", "")
@@ -1400,6 +1431,15 @@ class App(tk.Tk):
                         details_b64 = find_res.get("DETAILS", "")
                         if not details_b64:
                             details_b64 = self._lookup_details_from_manifest(block_id)
+
+                        # Show vault status
+                        vault_nodes = [n for n in nodes_info if n.get("status") == "VERIFIED"]
+                        if vault_nodes:
+                            vault_ok = all(n.get("vault_integrity", False) for n in vault_nodes)
+                            scan.log_left(f"Vault integrity: {'OK' if vault_ok else 'FAIL'} across {len(vault_nodes)} node(s)")
+                        else:
+                            scan.log_left("Vault: N/A")
+
                         scan.log_left("File matched")
                         scan.log_right(f"PDF: {'UNLOCKED' if opens else 'LOCKED'}")
                         scan.set_success()

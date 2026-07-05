@@ -3,8 +3,10 @@ REM Build inti C++ (scdv_verifier.exe) dengan g++ MinGW.
 REM v2.0 Distributed Blockchain — ECDSA + Raft Consensus + HTTP Networking
 cd /d "%~dp0"
 
+set "MINGW64_BIN=C:\ProgramData\mingw64\mingw64\bin"
+set "PATH=%MINGW64_BIN%;%PATH%"
 set "GPP=g++"
-where g++ >nul 2>nul || set "GPP=C:\ProgramData\mingw64\mingw64\bin\g++.exe"
+where g++ >nul 2>nul || set "GPP=%MINGW64_BIN%\g++.exe"
 set "OPT=C:\ProgramData\mingw64\mingw64\opt"
 
 if not exist "%OPT%\lib\libcrypto.a" (
@@ -17,6 +19,7 @@ echo [*] Compiling scdv_verifier.exe (v2.0 distributed) ...
 "%GPP%" -std=c++17 -O2 -static -static-libgcc -static-libstdc++ ^
   src\main.cpp src\crypto_utils.cpp src\ecdsa_utils.cpp ^
   src\blockchain.cpp src\document_handler.cpp src\node.cpp ^
+  src\offchain_vault.cpp src\keystore.cpp ^
   -I. -Iinclude -I"%OPT%\include" ^
   "%OPT%\lib\libssl.a" "%OPT%\lib\libcrypto.a" ^
   -lws2_32 -lcrypt32 -lgdi32 -ladvapi32 -luser32 -lz ^

@@ -18,10 +18,12 @@ struct Block {
     std::string student_id;
     std::string timestamp;
     std::string block_hash;
-    std::string encrypted_details;
+    std::string encrypted_details;  // kept for backward compat, empty on new blocks
+    std::string details_hash;        // hash of off-chain vault data (new)
 
     std::string creator_id;
-    std::string signature;
+    std::string signature;           // proposer's signature
+    std::vector<std::string> validator_sigs;  // multi-sig from other validators
     int64_t term = 0;
 
     json to_json() const;
@@ -86,6 +88,22 @@ public:
     Block get_last_block() const;
     std::string get_last_block_hash() const;
 
+    // Off-chain vault
+    Block prepare_block_proposal(const std::string& file_hash,
+                                  const std::string& encrypted_label,
+                                  const std::string& student_name,
+                                  const std::string& student_id,
+                                  const std::string& details = "");
+    bool append_multi_sig_block(const Block& block);
+    json get_offchain_details(const std::string& file_hash) const;
+
+    // Key access (for multi-sig operations)
+    std::string get_node_priv_key() const { return node_priv_key; }
+    std::string get_node_pub_key() const { return node_pub_key; }
+
+    // Make calculate_block_hash public for external use
+    std::string calculate_block_hash(const Block& block) const;
+
     // Validator management
     void add_validator(const Validator& v);
     void remove_validator(const std::string& node_id);
@@ -99,7 +117,6 @@ private:
     std::string node_priv_key;
     std::string node_pub_key;
 
-    std::string calculate_block_hash(const Block& block) const;
     std::string get_last_block_hash_internal() const;
     Block create_block(const std::string& file_hash,
                        const std::string& encrypted_label,

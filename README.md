@@ -1,163 +1,325 @@
-# SecureChain Diploma Verifier (SCDV) v2.0
+# SecureChain Diploma Verifier (SCDV) v3.0
 
-**Sistem Verifikasi Ijazah Berbasis Blockchain Distributed** — Cegah Pemalsuan & Jamin Keaslian Dokumen dengan Konsensus Raft + ECDSA Cryptography
+**Sistem Verifikasi Ijazah Blockchain Terdistribusi** — Cegah Pemalsuan Dokumen dengan Raft Consensus + ECDSA Multi-Sig + Off-Chain Vault
 
 ---
 
 ## 📌 Buat Apa Ini?
 
-Mencegah pemalsuan ijazah. Setiap dokumen yang didaftarkan akan:
+Mencegah pemalsuan ijazah. Setiap dokumen melewati **6 tahap pengamanan**:
 
-1. **Dihash** (SHA-256) — kalau file diubah 1 bit saja, hash beda → ketahuan
-2. **Dienkripsi** dengan kode unik — hanya mahasiswa + kampus yang tahu kode-nya
-3. **Ditandatangani** dengan ECDSA — bukti siapa yang mendaftarkan
-4. **Dicatat di Blockchain** — data tidak bisa diubah retroaktif
-5. **Direplikasi ke semua Node** — lewat Raft consensus, tidak ada single point of failure
+1. **📄 Upload** — File PDF diterima sistem
+2. **🔐 SHA-256 Hash** — File di-hash, 1 bit perubahan → hash berbeda → ketahuan
+3. **🔑 AES-256 Encrypt** — Label unik dienkripsi, hanya pemilik kunci bisa baca
+4. **🗄️ Off-Chain Vault** — Data sensitif (nama, NIM) disimpan terpisah, hanya hash-nya di blockchain
+5. **✍️ Multi-Sig ECDSA** — Blok ditandatangani ≥2 dari 3 validator (UGM/UI/ITB)
+6. **⛓️ Block Commit** — Blok dicatat di blockchain via Raft consensus, direplikasi ke semua node
 
 ---
 
-## 🚀 Panduan Langkah demi Langkah (Pemula)
+## 🚀 Quick Start (30 Detik)
 
-### Persiapan (Hanya Sekali)
-
-**Langkah 1: Install Python dependencies**
 ```cmd
-install_deps.bat
+BUILD.bat                          # Build C++ → scdv_verifier.exe
+scdv_verifier --keygen data        # Generate keypair (sekali)
+scdv_verifier register "ijazah.pdf" "UGM-001" "Hudzaifah" "001"
+scdv_verifier verify "ijazah.pdf" "UGM-001"
 ```
-Atau manual: `python -m pip install --user pypdf reportlab`
 
-**Langkah 2: Build program C++**
+Kalau output `STATUS=VERIFIED` → ASLI. Kalau error → PALSU/DIUBAH.
+
+---
+
+## 📋 Fitur Lengkap
+
+### CLI — 15+ Perintah
+
+| Perintah | Fungsi |
+|----------|--------|
+| `--keygen <dir>` | Generate ECDSA keypair + simpan ke keystore |
+| `--multi-keygen` | Generate 3 keypair (UGM, UI, ITB) untuk multi-sig |
+| `register <file> <kode> <nama> <nim>` | Daftarkan ijazah ke blockchain |
+| `verify <file> <kode>` | Verifikasi keaslian file |
+| `find <kode_unik>` | Cari data berdasarkan kode unik |
+| `find_student <nama> <nim>` | Cari berdasarkan nama + NIM |
+| `validate` | Validasi integritas seluruh blockchain |
+| `--node <config>` | Jalankan node Raft (HTTP server) |
+| `--status` | Lihat status node + cluster |
+| `--validators` | Lihat daftar validator multi-sig |
+| `--propose-block <json>` | Proposal blok baru via CLI |
+| `--multi-verify <file> <kode>` | Verifikasi dengan validasi multi-sig |
+
+### GUI — Tkinter Desktop
+
 ```cmd
+python gui/app.py
+```
+
+2 tab:
+- **Kampus** — Daftarkan ijazah (pilih PDF, isi data, klik amankan)
+- **Verifikasi** — Upload file SECURED, masukkan kode, cek keaslian
+
+### Web Dashboard — Real-Time Visualisasi
+
+```cmd
+python gui/vis_server.py
+# Buka http://localhost:9001
+```
+
+3 tampilan:
+- **`dev.html`** — Dashboard monitoring (node cards, live logs, action feed, blockchain view)
+- **`index.html`** — Visualisasi D3.js (node topology, Raft election, particle flow)
+- Pipeline n8n-style: Upload → Hash → Encrypt → Vault → Multi-Sig → Commit
+
+### Distributed Network — Multi-Node Raft
+
+Jalankan cluster dengan 3, 5, atau 10 node:
+
+```cmd
+# Demo 3 node (UGM, UI, ITB)
+powershell -ExecutionPolicy Bypass -File DEMO_3NODE.ps1
+
+# Demo 10 node
+powershell -ExecutionPolicy Bypass -File DEMO_10NODE.ps1
+
+# Test konektivitas jaringan
+python gui/test_network.py
+```
+
+Test otomatis:
+```cmd
+python gui/test_network.py
+# Output: Testing 3 nodes... ✓ All nodes connected
+#          Proposing block... ✓ Block committed
+#          Verifying... ✓ Document verified
+```
+
+---
+
+## 🔒 Arsitektur Keamanan
+
+```
+                    ┌─────────────────────────────┐
+                    │      USER (Upload PDF)       │
+                    └──────────────┬──────────────┘
+                                   ▼
+                    ┌─────────────────────────────┐
+                    │  ① SHA-256 File Hash        │
+                    │  ② AES-256 Label Encrypt    │
+                    └──────────────┬──────────────┘
+                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    OFF-CHAIN VAULT                               │
+│  data/offchain_vault/<details_hash>.json                         │
+│  { "student_name": "...", "student_id": "..." }                 │
+│  Hanya hash-nya (SHA-256) yang disimpan di blockchain            │
+└─────────────────────────────────────────────────────────────────┘
+                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BLOCKCHAIN LAYER                              │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐                    │
+│  │ Block #0 │◄──│ Block #1 │◄──│ Block #2 │  ← Chain linkage  │
+│  │ hash:..  │   │ hash:..  │   │ hash:..  │  (SHA-256 prev)   │
+│  │ sigs:3/3 │   │ sigs:3/3 │   │ sigs:3/3 │  (ECDSA multi-sig)│
+│  └──────────┘   └──────────┘   └──────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
+                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    RAFT CONSENSUS (3-10 Nodes)                   │
+│                                                                  │
+│     ┌──────┐          ┌──────┐          ┌──────┐               │
+│     │ UGM  │◄────────►│  UI  │◄────────►│ ITB  │               │
+│     │Leader│          │Follower│        │Follower│              │
+│     └──────┘          └──────┘          └──────┘               │
+│         ▲                ▲                ▲                      │
+│         │  Log Replication (HTTP API)     │                      │
+│         └────────────────┴────────────────┘                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### ECDSA Multi-Sig (secp256k1)
+
+Setiap blok ditandatangani oleh **≥2 dari 3 validator**:
+- **UGM** — Public key disimpan di `data/`
+- **UI** — Public key disimpan di `data/`
+- **ITB** — Public key disimpan di `data/`
+
+Private keys disimpan di `.keystore/` (tidak ikut git).
+
+### Off-Chain Vault
+
+Data mahasiswa (nama, NIM) tidak disimpan langsung di blockchain. Sistem:
+1. **Hash** data → `details_hash = SHA-256(json)`
+2. **Simpan** di `secured/` atau `data/offchain_vault/`
+3. **Blockchain hanya menyimpan hash**
+
+Saat verifikasi: vault di-cocokkan ulang, hash harus sama.
+
+### Raft Consensus
+
+| Komponen | Fungsi |
+|----------|--------|
+| **Leader Election** | Node otomatis pilih leader via Raft |
+| **Log Replication** | Leader kirim blok ke semua follower |
+| **Safety** | Hanya leader sah yang bisa commit blok |
+| **Term** | Setiap election punya nomor term unik |
+
+---
+
+## 📁 Struktur Project
+
+```
+SecureChain-Diploma-Verifier/
+├── BUILD.bat                     ← Build C++ (double-click)
+├── scdv_verifier.exe             ← Binary utama (static build)
+├── RUN.bat                       ← Jalankan GUI
+├── install_deps.bat              ← Install Python deps
+├── DEMO_3NODE.ps1                ← Demo 3 node (UGM, UI, ITB)
+├── DEMO_10NODE.ps1               ← Demo 10 node cluster
+│
+├── src/                          ← C++ source (8 files)
+│   ├── main.cpp                  ← Entry point + CLI parser
+│   ├── blockchain.cpp            ← Blockchain logic + JSON persistence
+│   ├── crypto_utils.cpp          ← SHA-256, AES-256-CBC (OpenSSL EVP)
+│   ├── document_handler.cpp      ← File I/O
+│   ├── ecdsa_utils.cpp           ← ECDSA sign/verify, ECDH, ECIES
+│   ├── keystore.cpp              ← Key management (save/load/list)
+│   ├── node.cpp                  ← Raft consensus + HTTP server
+│   └── offchain_vault.cpp        ← Off-chain data storage
+│
+├── include/                      ← C++ headers (8 files)
+│   ├── blockchain.h
+│   ├── crypto_utils.h
+│   ├── document_handler.h
+│   ├── ecdsa_utils.h             ← ECDSA + ECDH + ECIES
+│   ├── keystore.h
+│   ├── node.h                    ← Raft consensus + HTTP API
+│   ├── offchain_vault.h
+│   └── nlohmann/json.hpp         ← JSON parser (vendored)
+│
+├── gui/                          ← Python GUI + Web
+│   ├── app.py                    ← Tkinter desktop (2 tab)
+│   ├── pdf_secure.py             ← Stamp + password PDF
+│   ├── scdv_core.py              ← Bridge GUI → C++ exe
+│   ├── vis_server.py             ← Web visualization server
+│   ├── test_network.py           ← Automated network test
+│   └── web/                      ← Web dashboard
+│       ├── index.html            ← D3.js topology visualization
+│       ├── vis.js                ← D3.js force simulation + particles
+│       ├── dev.html              ← Dev dashboard (pipeline + logs)
+│       ├── dev.js                ← Dashboard logic + n8n pipeline
+│       ├── dev.css               ← Dashboard styling
+│       └── style.css             ← Topology styling
+│
+├── data/                         ← Runtime data (gitignored)
+│   ├── blockchain.json           ← Ledger blockchain
+│   ├── node_config.json          ← Keypair + config
+│   ├── node_A/pub/               ← Per-node configs (A-J)
+│   └── ...
+│
+├── .keystore/                    ← Private keys (gitignored)
+│   ├── ugm.key                   ← EC private key UGM
+│   ├── ui.key                    ← EC private key UI
+│   └── itb.key                   ← EC private key ITB
+│
+├── secured/                      ← PDF hasil securing
+│   ├── manifest.json
+│   └── *.pdf                     ← 127+ secured files
+│
+└── docs/
+    ├── DEMO_STEP_BY_STEP.txt
+    └── FLOWCHART_DEMO.txt
+```
+
+---
+
+## 🎯 Skenario Lengkap
+
+### 1. Single Node — Daftarkan Ijazah
+
+```cmd
+cd C:\laragon\www\Blockchain
 BUILD.bat
-```
-Tunggu sampai muncul `BUILD SUKSES -> scdv_verifier.exe`
-
-### Cara Pakai — 3 Mode
-
----
-
-## 🅰️ Mode Sederhana (CLI Langsung)
-
-Ini yang paling gampang. Semua di command line.
-
-### 1. Generate Kunci (wajib sekali)
-```cmd
 scdv_verifier --keygen data
-```
-Output: `data/node_config.json` — ini kunci privat/publik node Anda.
-
-### 2. Daftarkan Ijazah (Admin)
-```cmd
-scdv_verifier register "ijazah.pdf" "UGM-001-HUDZAIFAH" "Hudzaifah" "001"
-```
-Penjelasan argumen:
-| Argumen | Contoh | Artinya |
-|---------|--------|---------|
-| `ijazah.pdf` | file ijazah | Path ke file PDF |
-| `UGM-001-HUDZAIFAH` | kode unik | Format: KAMPUS-NIM-NAMA |
-| `Hudzaifah` | nama | Nama mahasiswa |
-| `001` | NIM | Nomor induk mahasiswa |
-
-### 3. Verifikasi Ijazah (User/Perekrut)
-```cmd
-scdv_verifier verify "ijazah_SECURED.pdf" "UGM-001-HUDZAIFAH"
-```
-Kalau keluar `STATUS=VERIFIED` berarti ASLI. Kalau error berarti PALSU/DIUBAH.
-
-### 4. Cari Data Ijazah
-```cmd
-scdv_verifier find "UGM-001-HUDZAIFAH"        # cari berdasarkan kode unik
-scdv_verifier find_student "Hudzaifah" "001"   # cari berdasarkan nama + NIM
+scdv_verifier register "ijazah.pdf" "UGM-010203-HUDZAIFAH" "Hudzaifah Rahman" "010203"
 ```
 
-### 5. Cek Keaslian Blockchain
-```cmd
-scdv_verifier validate
+Pipeline (via web dashboard):
 ```
-Kalau `STATUS=VALID` berarti blockchain tidak pernah dirusak.
+📄UPLOAD → 🔐HASH → 🔑ENCRYPT → 🗄️VAULT → ✍️MULTI-SIG → ⛓️COMMIT
+   ✅         ✅         ✅          ✅          ✅            ✅
+```
+
+### 2. Single Node — Verifikasi
+
+```cmd
+scdv_verifier verify "ijazah.pdf" "UGM-010203-HUDZAIFAH"
+# Output: STATUS=VERIFIED
+```
+
+### 3. Multi-Node Cluster (3 Node)
+
+**Terminal 1:**
+```cmd
+scdv_verifier --keygen dataA
+scdv_verifier --node dataA\node_config.json
+# → LEADER, listen :8545
+```
+
+**Terminal 2:**
+```cmd
+scdv_verifier --keygen dataB
+:: edit dataB\node_config.json → seed_peers: ["http://127.0.0.1:8545"]
+scdv_verifier --node dataB\node_config.json
+```
+
+**Terminal 3:**
+```cmd
+scdv_verifier --keygen dataC
+:: edit dataC\node_config.json → seed_peers: ["http://127.0.0.1:8545"]
+scdv_verifier --node dataC\node_config.json
+```
+
+### 4. Register via HTTP API
+
+```cmd
+curl -X POST http://localhost:8545/propose ^
+  -H "Content-Type: application/json" ^
+  -d "{\"file_hash\":\"abc123...\",\"encrypted_label\":\"xyz...\",\"student_name\":\"Hudzaifah\",\"student_id\":\"001\"}"
+```
+
+### 5. Generate Multi-Sig Keys
+
+```cmd
+scdv_verifier --multi-keygen
+# Output: Generated 3 keypairs (UGM, UI, ITB)
+#         Keystore: .keystore/ugm.key, .keystore/ui.key, .keystore/itb.key
+```
+
+### 6. Verify dengan Multi-Sig
+
+```cmd
+scdv_verifier --multi-verify "ijazah.pdf" "UGM-010203-HUDZAIFAH"
+# Output: Multi-sig verification: 3/3 signatures valid
+```
 
 ---
 
-## 🅱️ Mode GUI (Klik-klik)
+## 🔌 API HTTP Reference
 
-**Jalankan:**
-```cmd
-RUN.bat
-```
-Atau: `python gui/app.py`
+Base URL: `http://<node-ip>:<port>`
 
-**Tab Kampus — Daftarkan Ijazah:**
-1. Pilih file PDF
-2. Isi kode unik, nama, NIM
-3. Klik "Daftarkan & Amankan"
-
-**Tab Verifikasi — Cek Keaslian:**
-1. Upload file `*_SECURED.pdf`
-2. Masukkan kode unik
-3. Klik "Verifikasi"
-
----
-
-## 🅲️ Mode Jaringan (Multi-Node / Distributed)
-
-Untuk setup beberapa komputer/node yang saling sinkron.
-
-### Topologi
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐
-│ Node A   │◄───►│ Node B   │◄───►│ Node C   │
-│ (Leader) │     │(Follower)│     │(Follower)│
-└──────────┘     └──────────┘     └──────────┘
-     │                │                │
-     └────────────────┴────────────────┘
-                   HTTP API
-```
-
-### Jalankan Node Pertama (Leader)
-```cmd
-scdv_verifier --node data\node_config.json
-```
-Node akan:
-- Listen di `0.0.0.0:8545`
-- Memilih dirinya jadi LEADER (karena cuma 1 node)
-- Siap menerima proposal blok
-
-### Jalankan Node Kedua (di komputer lain / terminal beda)
-1. Generate keypair: `scdv_verifier --keygen data`
-2. Edit `data\node_config.json` — tambahkan peer:
-```json
-{
-  "priv_key": "...",
-  "pub_key": "...",
-  "listen_addr": "0.0.0.0:8545",
-  "seed_peers": ["http://192.168.1.10:8545"]
-}
-```
-3. Jalankan: `scdv_verifier --node data\node_config.json`
-
-### Operasi di Mode Jaringan
-```cmd
-# Lihat status node (leader/follower, term, peers)
-scdv_verifier --status
-
-# Lihat daftar validator
-scdv_verifier --validators
-
-# Register tetap sama — otomatis proposal ke leader
-scdv_verifier register "ijazah.pdf" "UGM-001-HUDZAIFAH" "Hudzaifah" "001"
-```
-
-### API HTTP (untuk integrasi aplikasi lain)
-
-| Method | Endpoint | Fungsi |
-|--------|----------|--------|
-| GET | `/status` | Status node + blockchain |
-| GET | `/chain` | Full blockchain |
-| GET | `/peers` | Daftar peer |
-| POST | `/propose` | Proposal blok baru (JSON) |
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| GET | `/status` | Status node + cluster info |
+| GET | `/chain` | Full blockchain JSON |
+| GET | `/peers` | Daftar peer terhubung |
+| GET | `/sync` | Sinkronisasi blockchain |
+| GET | `/vault/<hash>` | Ambil data vault by hash |
+| POST | `/propose` | Proposal blok baru |
 | POST | `/vote` | Raft RequestVote RPC |
 | POST | `/append` | Raft AppendEntries RPC |
-| GET | `/sync` | Sinkronisasi blockchain lengkap |
+| POST | `/api/blockchain/verify` | Verify dokumen via API |
 
 Contoh:
 ```cmd
@@ -167,135 +329,35 @@ curl http://localhost:8545/chain
 
 ---
 
-## 🔒 Cara Kerja Keamanan
+## 🌐 Web Dashboard Akses
 
-### ECDSA (Elliptic Curve Digital Signature Algorithm)
-Setiap node punya **keypair unik** (secp256k1 — kurva yang sama dengan Bitcoin):
-- **Private key** → untuk menandatangani blok + mendekripsi data
-- **Public key** → untuk verifikasi tanda tangan + enkripsi data
+```cmd
+python gui/vis_server.py
+# Server mulai di http://localhost:9001
+```
 
-Setiap blok ditandatangani oleh pembuatnya. Kalau ada yang mengubah isi blok, tanda tangan jadi tidak valid.
-
-### ECIES (Elliptic Curve Integrated Encryption Scheme)
-Data sensitif dienkripsi dengan:
-1. Buat kunci sementara (ephemeral key)
-2. Gabung kunci sementara + public key penerima → shared secret (ECDH)
-3. Shared secret → AES-256-CBC key
-4. Simpan: `kunci_publik_sementara | IV | ciphertext`
-
-Hanya pemilik private key yang bisa mendekripsi.
-
-### Raft Consensus
-Algoritma untuk menjaga semua node punya data yang sama:
-1. **Leader Election** — node pilih pemimpin
-2. **Log Replication** — leader kirim blok baru ke semua follower
-3. **Safety** — hanya leader yang sah bisa nambah blok
+| Halaman | URL | Fungsi |
+|---------|-----|--------|
+| Topologi Node | `http://localhost:9001` | D3.js force graph, Raft election, particle flow |
+| Dev Dashboard | `http://localhost:9001/dev.html` | n8n pipeline, live logs, blockchain explorer |
 
 ---
 
-## 📁 Struktur File Penting
-
-```
-SecureChain-Diploma-Verifier/
-├── BUILD.bat                        ← Build C++ (double-click)
-├── install_deps.bat                 ← Install Python deps
-├── RUN.bat                          ← Jalankan GUI
-├── scdv_verifier.exe                ← Program utama (hasil build)
-│
-├── data/
-│   ├── blockchain.json              ← Ledger blockchain
-│   ├── node_config.json             ← Keypair + konfigurasi node
-│   └── node_<id>.pub                ← Public key (untuk share)
-│
-├── gui/
-│   ├── app.py                       ← GUI Tkinter
-│   ├── pdf_secure.py                ← Cap + password PDF
-│   └── scdv_core.py                 ← Jembatan GUI → C++
-│
-├── src/                             ← Source code C++
-└── include/                         ← Header files C++
-    ├── ecdsa_utils.h                ← ECDSA + ECDH + ECIES
-    ├── node.h                       ← Raft consensus + HTTP
-    ├── blockchain.h                 ← Blockchain logic
-    ├── crypto_utils.h               ← SHA-256 + AES
-    └── document_handler.h           ← File I/O
-```
-
----
-
-## 🎓 Skenario Lengkap
-
-### Di Kampus (Admin — Daftarkan Ijazah Hudzaifah)
-
-1. Buka terminal: `cd C:\laragon\www\Blockchain`
-2. Build: `BUILD.bat`
-3. Generate key: `scdv_verifier --keygen data`
-4. Register ijazah:
-   ```
-   scdv_verifier register "C:\ijazah_hudzaifah.pdf" "UGM-010203-HUDZAIFAH" "Hudzaifah Rahman" "010203"
-   ```
-5. Output: `STATUS=OK` — ijazah tercatat di blockchain
-
-### Di Perusahaan (HRD — Verifikasi Ijazah Pelamar)
-
-1. Buka terminal: `cd C:\laragon\www\Blockchain`
-2. Build (kalum belum): `BUILD.bat`
-3. Generate key: `scdv_verifier --keygen data`
-4. Verifikasi:
-   ```
-   scdv_verifier verify "C:\ijazah_hudzaifah_SECURED.pdf" "UGM-010203-HUDZAIFAH"
-   ```
-5. Kalau `STATUS=VERIFIED` → aman. Kalau error → hati-hati!
-
-### Dengan Jaringan 3 Node
-
-**Terminal 1 — Node A (Leader):**
-```
-scdv_verifier --keygen dataA
-scdv_verifier --node dataA\node_config.json
-```
-
-**Terminal 2 — Node B (Follower):**
-```
-scdv_verifier --keygen dataB
-```
-Edit `dataB\node_config.json` — tambah `"seed_peers": ["http://127.0.0.1:8545"]`
-```
-scdv_verifier --node dataB\node_config.json
-```
-
-**Terminal 3 — Register via API:**
-```
-curl -X POST http://localhost:8545/propose -H "Content-Type: application/json" -d "{\"file_hash\":\"abc...\",\"encrypted_label\":\"xyz...\",\"student_name\":\"Hudzaifah\",\"student_id\":\"001\"}"
-```
-
----
-
-## ❓ Troubleshooting untuk Pemula
+## 🔧 Troubleshooting
 
 | Masalah | Solusi |
 |---------|--------|
-| `'g++' not recognized` | Jalankan `BUILD.bat` (dia auto-detect g++ path) |
-| `OpenSSL not found` | Pastikan folder `C:\ProgramData\mingw64\mingw64\opt\` ada |
-| `STATUS=NOT_FOUND` | Kode unik salah, coba `find` dulu untuk cek |
-| `STATUS=ERROR MESSAGE=...` | Baca pesan error-nya, biasanya ada petunjuk |
-| Node tidak bisa connect | Cek IP + port, firewall, pastikan kedua node jalan |
-| GUI hitam/error | `python -m pip install --user pypdf reportlab` |
-| Blockchain corrupt/hash mismatch | Hapus `data\blockchain.json` dan register ulang |
+| `g++ not found` | Jalankan `BUILD.bat` (auto-detect MinGW) |
+| `OpenSSL error` | Pastikan `C:\ProgramData\mingw64\mingw64\opt\` ada |
+| `STATUS=NOT_FOUND` | Kode unik salah, coba `find` dulu |
+| Node tidak connect | Cek IP/port, firewall, pastikan seed_peers benar |
+| GUI error hitam | `pip install --user pypdf reportlab` |
+| Blockchain corrupt | Hapus `data/blockchain.json`, register ulang |
+| Multi-sig fail | Generate ulang: `--multi-keygen` |
 
 ---
 
-## ⚠️ Sebelum Produksi
-
-Generate kunci kuat untuk production:
-```cmd
-openssl rand -base64 32
-```
-Ganti di `gui/pdf_secure.py` variable `CAMPUS_SIGNING_KEY`.
-
----
-
-## 🧪 Quick Test (Cek Semua Berfungsi)
+## 🧪 Quick Test
 
 ```cmd
 BUILD.bat
@@ -306,11 +368,10 @@ scdv_verifier verify "gui\app.py" "TEST-001"
 scdv_verifier validate
 scdv_verifier --status
 scdv_verifier --validators
+python gui/test_network.py
 ```
-
-Kalau semua `STATUS=OK/VERIFIED/VALID` — sistem siap dipakai! 🎉
 
 ---
 
-**SecureChain v2.0 — Distributed Blockchain Document Verification**
-C++17 + OpenSSL + Python Tkinter + Raft Consensus + ECDSA secp256k1
+**SecureChain v3.0 — Distributed Blockchain Document Verification**
+C++17 + OpenSSL EVP + Python Tkinter + Raft Consensus + ECDSA Multi-Sig + Off-Chain Vault + D3.js Web Viz

@@ -107,7 +107,8 @@ def broadcast_sse():
     with SSE_LOCK:
         for client in SSE_CLIENTS:
             try:
-                client.send(f"data: {payload}\n\n".encode())
+                client.write(f"data: {payload}\n\n".encode())
+                client.flush()
             except Exception:
                 dead.append(client)
         for c in dead:
@@ -157,6 +158,11 @@ class SSEHandler(http.server.SimpleHTTPRequestHandler):
                 "timestamp": time.time(),
             }))
             return
+        if self.path == "/dev":
+            self.send_response(302)
+            self.send_header("Location", "/dev.html")
+            self.end_headers()
+            return
         return super().do_GET()
 
     def send_json(self, payload):
@@ -168,6 +174,12 @@ class SSEHandler(http.server.SimpleHTTPRequestHandler):
         try:
             self.wfile.write(payload.encode())
         except Exception:
+            pass
+
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except ConnectionError:
             pass
 
     def log_message(self, fmt, *args):

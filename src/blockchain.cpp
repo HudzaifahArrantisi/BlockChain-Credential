@@ -1,6 +1,7 @@
 #include "../include/blockchain.h"
 #include "../include/crypto_utils.h"
 #include "../include/ecdsa_utils.h"
+#include "../include/offchain_vault.h"
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -18,9 +19,14 @@ json Block::to_json() const {
         {"timestamp", timestamp},
         {"block_hash", block_hash},
         {"encrypted_details", encrypted_details},
+        {"details_hash", details_hash},
         {"creator_id", creator_id},
-        {"term", term}
+        {"term", term},
+        {"validator_sigs", json::array()}
     };
+    for (const auto& s : validator_sigs) {
+        j["validator_sigs"].push_back(s);
+    }
     if (!signature.empty()) j["signature"] = signature;
     return j;
 }
@@ -36,9 +42,13 @@ Block Block::from_json(const json& j) {
     b.timestamp = j["timestamp"];
     b.block_hash = j["block_hash"];
     b.encrypted_details = j.value("encrypted_details", "");
+    b.details_hash = j.value("details_hash", "");
     b.creator_id = j.value("creator_id", "");
     b.signature = j.value("signature", "");
     b.term = j.value("term", 0);
+    if (j.contains("validator_sigs")) {
+        b.validator_sigs = j["validator_sigs"].get<std::vector<std::string>>();
+    }
     return b;
 }
 
@@ -61,8 +71,11 @@ std::string StrictBlockchain::calculate_block_hash(const Block& block) const {
     std::string data = block.index + block.previous_hash + block.file_hash +
                        block.encrypted_label + block.student_name +
                        block.student_id + block.timestamp +
-                       block.encrypted_details + block.creator_id +
-                       std::to_string(block.term);
+                       block.encrypted_details + block.details_hash +
+                       block.creator_id + std::to_string(block.term);
+    for (const auto& s : block.validator_sigs) {
+        data += s;
+    }
     return CryptoUtils::sha256(data);
 }
 
@@ -79,6 +92,7 @@ Block StrictBlockchain::create_block(const std::string& file_hash,
     block.student_name = student_name;
     block.student_id = student_id;
     block.encrypted_details = encrypted_details;
+    block.details_hash = "";
     block.creator_id = node_pub_key;
     block.term = 0;
 
@@ -106,6 +120,7 @@ Block StrictBlockchain::create_unsigned_block(const std::string& file_hash,
     block.student_name = student_name;
     block.student_id = student_id;
     block.encrypted_details = encrypted_details;
+    block.details_hash = "";
     block.creator_id = node_pub_key;
     block.term = term;
 
@@ -117,6 +132,83 @@ Block StrictBlockchain::create_unsigned_block(const std::string& file_hash,
 
     block.block_hash = calculate_block_hash(block);
     return block;
+}
+
+Block StrictBlockchain::prepare_block_proposal(const std::string& file_hash,
+                                                const std::string& encrypted_label,
+                                                const std::string& student_name,
+                                                const std::string& student_id,
+                                                const std::string& details) {
+    std::string details_hash;
+    if (!details.empty()) {
+        json vault_entry;
+        vault_entry["student_name"] = student_name;
+        vault_entry["student_id"] = student_id;
+        vault_entry["details"] = details;
+        vault_entry["file_hash"] = file_hash;
+        vault_entry["timestamp"] = "";
+
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+        vault_entry["timestamp"] = ss.str();
+
+        details_hash = OffChainVault::save_details(file_hash, vault_entry);
+    }
+
+    Block block;
+    block.index = std::to_string(chain.size());
+    block.previous_hash = get_last_block_hash_internal();
+    block.file_hash = file_hash;
+    block.encrypted_label = encrypted_label;
+    block.student_name = student_name;
+    block.student_id = student_id;
+    block.encrypted_details = "";  // not stored inline anymore
+    block.details_hash = details_hash;
+    block.creator_id = node_pub_key;
+    block.term = 0;
+
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+    block.timestamp = ss.str();
+
+    block.block_hash = calculate_block_hash(block);
+    return block;
+}
+
+bool StrictBlockchain::append_multi_sig_block(const Block& block) {
+    if (!chain.empty() && block.previous_hash != chain.back().block_hash)
+        return false;
+
+    std::string expected_hash = calculate_block_hash(block);
+    if (block.block_hash != expected_hash) {
+        std::cerr << "[!] Block hash mismatch in append_multi_sig_block" << std::endl;
+        return false;
+    }
+
+    // Verify all signatures
+    for (const auto& v : validators) {
+        auto it = std::find(block.validator_sigs.begin(), block.validator_sigs.end(), "");
+        if (it != block.validator_sigs.end()) continue;
+
+        // Single signature from creator
+        if (block.creator_id == v.pub_key_hex && !block.signature.empty()) {
+            if (!ECDSAUtils::verify(v.pub_key_hex, block.block_hash, block.signature)) {
+                std::cerr << "[!] Invalid proposer signature from " << v.node_id << std::endl;
+                return false;
+            }
+        }
+    }
+
+    chain.push_back(block);
+    return true;
+}
+
+json StrictBlockchain::get_offchain_details(const std::string& file_hash) const {
+    return OffChainVault::load_details(file_hash);
 }
 
 void StrictBlockchain::sign_block(Block& block) {
@@ -168,16 +260,27 @@ void StrictBlockchain::register_diploma(const std::string& file_hash,
         encrypted_label = CryptoUtils::aes256_encrypt(unique_label, "SecureChain2024!Key@Campus");
     }
 
-    std::string encrypted_details;
+    std::string details_hash;
     if (!details.empty()) {
-        if (!node_pub_key.empty()) {
-            encrypted_details = ECDSAUtils::ecdh_aes_encrypt(node_pub_key, details);
-        } else {
-            encrypted_details = CryptoUtils::aes256_encrypt(details, unique_label);
-        }
+        json vault_entry;
+        vault_entry["student_name"] = student_name;
+        vault_entry["student_id"] = student_id;
+        vault_entry["details"] = details;
+        vault_entry["file_hash"] = file_hash;
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S");
+        vault_entry["timestamp"] = ss.str();
+        details_hash = OffChainVault::save_details(file_hash, vault_entry);
+        std::cout << "[VAULT] Registered off-chain details for " << file_hash.substr(0, 16)
+                  << "... hash=" << details_hash.substr(0, 16) << "..." << std::endl;
     }
 
-    Block new_block = create_block(file_hash, encrypted_label, student_name, student_id, encrypted_details);
+    Block new_block = create_block(file_hash, encrypted_label, student_name,
+                                    student_id, "");
+    new_block.details_hash = details_hash;
+    new_block.block_hash = calculate_block_hash(new_block);
     chain.push_back(new_block);
     std::cout << "[+] Diploma registered: " << student_id << " (" << student_name << ")" << std::endl;
 }
@@ -268,6 +371,14 @@ bool StrictBlockchain::validate_chain() const {
         if (!chain[i].signature.empty() && !validate_block_signature(chain[i])) {
             std::cerr << "[!] Block " << i << " invalid signature" << std::endl;
             return false;
+        }
+
+        if (!chain[i].details_hash.empty()) {
+            if (!OffChainVault::verify_details(chain[i].file_hash, chain[i].details_hash)) {
+                std::cerr << "[!] Block " << i << " off-chain details mismatch or missing"
+                          << std::endl;
+                return false;
+            }
         }
     }
 
@@ -379,10 +490,13 @@ void StrictBlockchain::print_chain() const {
                   << " (" << chain[i].student_id << ")" << std::endl;
         std::cout << "  File Hash: " << chain[i].file_hash.substr(0, 16) << "..." << std::endl;
         std::cout << "  Block Hash: " << chain[i].block_hash.substr(0, 16) << "..." << std::endl;
+        std::cout << "  Details Hash: " << (chain[i].details_hash.empty() ? "(none)" : chain[i].details_hash.substr(0, 16) + "...") << std::endl;
         std::cout << "  Creator: " << chain[i].creator_id.substr(0, 16) << "..."
                   << " Term: " << chain[i].term << std::endl;
         if (!chain[i].signature.empty())
             std::cout << "  Signed: " << chain[i].signature.substr(0, 16) << "..." << std::endl;
+        if (chain[i].validator_sigs.size() > 1)
+            std::cout << "  Multi-sig: " << chain[i].validator_sigs.size() << " signatures" << std::endl;
     }
     std::cout << "\n========================\n" << std::endl;
 }

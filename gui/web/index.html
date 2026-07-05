@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SecureChain Live Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -11,25 +14,72 @@
 <div id="header">
   <h1><span class="icon">⛓️</span> SecureChain <span class="dim">Live Dashboard</span></h1>
   <div id="node-counts">
-    <span class="badge leader-badge">0 LEADER</span>
-    <span class="badge follower-badge">0 FOLLOWER</span>
-    <span class="badge offline-badge">0 OFFLINE</span>
-    <span id="block-count" class="badge block-badge">0 BLOCKS</span>
+    <span class="badge leader-badge"><span class="dot"></span>0 LEADER</span>
+    <span class="badge follower-badge"><span class="dot"></span>0 FOLLOWER</span>
+    <span class="badge offline-badge"><span class="dot"></span>0 OFFLINE</span>
+    <span id="block-count" class="badge block-badge"><span class="icon">⬡</span>0 BLOCKS</span>
   </div>
 </div>
 
 <div id="main">
   <div id="topology-panel">
+    <!-- Mirofish Canvas Title -->
+    <div id="graph-title-container">
+      <h2>Graph Relationship Visualization</h2>
+    </div>
+
+    <!-- Mirofish Controls Panel -->
+    <div id="graph-controls-panel">
+      <button id="btn-fit" class="ctrl-btn" title="Fit Graph View">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      </button>
+      <button id="btn-refresh" class="ctrl-btn" title="Refresh Force Layout">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span>Refresh</span>
+      </button>
+      <div class="toggle-container">
+        <span>Show Edge Labels</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle-edge-labels" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
     <div id="vis"></div>
     <div id="vis-tooltip"></div>
+
+    <!-- Mirofish Legend Panel -->
+    <div id="graph-legend-panel">
+      <div class="legend-title">NODE ROLES</div>
+      <div class="legend-items">
+        <div class="legend-item">
+          <span class="legend-dot leader"></span>
+          <span class="legend-label">Leader</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot follower"></span>
+          <span class="legend-label">Follower</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot candidate"></span>
+          <span class="legend-label">Candidate</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot offline"></span>
+          <span class="legend-label">Offline</span>
+        </div>
+      </div>
+    </div>
   </div>
+  <div id="resize-handle"></div>
   <div id="side-panel">
     <div id="blockchain-panel">
       <h3>⛓️ Blockchain</h3>
       <div id="chain-container"></div>
     </div>
     <div id="logs-panel">
-      <h3>📋 Live Logs</h3>
+      <h3>Live Logs</h3>
       <div id="log-tabs"></div>
       <div id="log-content"></div>
     </div>

@@ -1,6 +1,0 @@
-propose_block START role=LEADER file_hash=demo123
-  label is plaintext, pub_key len=130
-  encrypted label len=196
-  block created index=0 hash=f3046c543a7beb4c
-  block signed sig_len=144
-  append_signed_block returned 1

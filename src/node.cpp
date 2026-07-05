@@ -1,5 +1,6 @@
 #include "../include/node.h"
 #include "../include/ecdsa_utils.h"
+#include "../include/offchain_vault.h"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -27,9 +28,10 @@
 #endif
 
 static const int SERVER_PORT = 0;
-static const int RAFT_HEARTBEAT_MS = 500;
-static const int RAFT_ELECTION_MIN_MS = 800;
-static const int RAFT_ELECTION_MAX_MS = 1600;
+static const int RAFT_HEARTBEAT_MS = 400;
+static const int RAFT_ELECTION_MIN_MS = 2000;
+static const int RAFT_ELECTION_MAX_MS = 4000;
+static const int RAFT_STARTUP_STABILIZE_MS = 4000;
 static const int HTTP_BUFFER_SIZE = 65536;
 
 static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -183,6 +185,39 @@ std::string ConsensusNode::http_get(const std::string& url, const std::string& b
     return http_post(url, body);
 }
 
+// Non-blocking connect with timeout
+static bool connect_with_timeout(SOCKET sock, const sockaddr_in& sin, int timeout_sec) {
+#ifdef _WIN32
+    u_long nonblock = 1;
+    ioctlsocket(sock, FIONBIO, &nonblock);
+#else
+    int flags = fcntl(sock, F_GETFL, 0);
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+#endif
+    connect(sock, (sockaddr*)&sin, sizeof(sin));
+    fd_set fdset;
+    FD_ZERO(&fdset);
+    FD_SET(sock, &fdset);
+    timeval tv;
+    tv.tv_sec = timeout_sec;
+    tv.tv_usec = 0;
+    int rc = select((int)(sock + 1), nullptr, &fdset, nullptr, &tv);
+#ifdef _WIN32
+    u_long block = 0;
+    ioctlsocket(sock, FIONBIO, &block);
+#else
+    fcntl(sock, F_SETFL, flags);
+#endif
+    if (rc <= 0) {
+        closesocket(sock);
+        return false;
+    }
+    int so_error = 0;
+    socklen_t len = sizeof(so_error);
+    getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&so_error, &len);
+    return so_error == 0;
+}
+
 std::string ConsensusNode::http_post(const std::string& url, const std::string& body) {
     std::string host, path = "/";
     int port = 80;
@@ -208,16 +243,16 @@ std::string ConsensusNode::http_post(const std::string& url, const std::string& 
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) return "";
 
-    hostent* he = gethostbyname(host.c_str());
-    if (!he) { closesocket(sock); return ""; }
-
     sockaddr_in sin;
     sin.sin_family = AF_INET;
     sin.sin_port = htons(port);
-    memcpy(&sin.sin_addr, he->h_addr_list[0], he->h_length);
-
-    if (connect(sock, (sockaddr*)&sin, sizeof(sin)) == SOCKET_ERROR) {
+    sin.sin_addr.s_addr = inet_addr(host.c_str());
+    if (sin.sin_addr.s_addr == INADDR_NONE) {
         closesocket(sock);
+        return "";
+    }
+
+    if (!connect_with_timeout(sock, sin, 3)) {
         return "";
     }
 
@@ -388,7 +423,24 @@ void ConsensusNode::run_server() {
         size_t bb = raw.find("\r\n\r\n");
         if (bb != std::string::npos) body = raw.substr(bb + 4);
 
-        std::string response_body = handle_request(method, path, body);
+        std::string response_body;
+        try {
+            response_body = handle_request(method, path, body);
+        } catch (const std::exception& e) {
+            std::cerr << "[NODE] Unhandled exception in handle_request: "
+                      << e.what() << std::endl;
+            json err;
+            err["status"] = "ERROR";
+            err["message"] = e.what();
+            response_body = err.dump();
+        } catch (...) {
+            std::cerr << "[NODE] Unknown unhandled exception in handle_request"
+                      << std::endl;
+            json err;
+            err["status"] = "ERROR";
+            err["message"] = "Unknown internal error";
+            response_body = err.dump();
+        }
         std::stringstream http_resp;
         http_resp << "HTTP/1.1 200 OK\r\n"
                   << "Content-Type: application/json\r\n"
@@ -509,6 +561,79 @@ std::string ConsensusNode::handle_request(const std::string& method,
                               blockchain.get_validators()[0].pub_key_hex;
     }
 
+    // Verify diploma across this node (for multi-node consensus)
+    else if (path == "/api/blockchain/verify") {
+        try {
+            std::string file_hash = request.value("file_hash", "");
+            std::string label = request.value("label", "");
+
+            if (label.empty()) {
+                response["status"] = "ERROR";
+                response["message"] = "Missing 'label' field";
+            } else {
+                const Block* b = blockchain.find_by_label(label);
+                if (b) {
+                    response["status"] = "VERIFIED";
+                    response["name"] = b->student_name;
+                    response["id"] = b->student_id;
+                    response["timestamp"] = b->timestamp;
+                    response["file_hash"] = b->file_hash;
+                    response["block_hash"] = b->block_hash;
+                    response["details_hash"] = b->details_hash;
+                    response["validator_sigs"] = b->validator_sigs.size();
+
+                    // If file_hash provided, also verify file integrity
+                    if (!file_hash.empty()) {
+                        bool file_match = (b->file_hash == file_hash);
+                        response["file_match"] = file_match;
+                        if (!file_match) {
+                            response["status"] = "FILE_MISMATCH";
+                        }
+                    }
+
+                    // Check off-chain vault integrity
+                    if (!b->details_hash.empty()) {
+                        bool vault_ok = OffChainVault::verify_details(b->file_hash, b->details_hash);
+                        response["vault_integrity"] = vault_ok;
+                    }
+                } else {
+                    response["status"] = "NOT_FOUND";
+                }
+            }
+        } catch (const std::exception& e) {
+            response["status"] = "ERROR";
+            response["message"] = e.what();
+        }
+    }
+
+    // Multi-sig: sign a proposal from another validator
+    else if (path == "/api/blockchain/sign_proposal") {
+        try {
+            Block proposal = Block::from_json(request);
+            std::string proposer_id = request.value("proposer_id", "");
+            std::string expected_hash = blockchain.calculate_block_hash(proposal);
+
+            if (proposal.block_hash != expected_hash) {
+                response["status"] = "REJECTED";
+                response["message"] = "Block hash mismatch";
+            } else {
+                std::string sig = ECDSAUtils::sign(
+                    blockchain.get_node_priv_key(),
+                    proposal.block_hash
+                );
+                response["status"] = "signed";
+                response["signature"] = sig;
+                response["validator_id"] = node_id;
+                std::cout << "[NODE " << node_id << "] Signed proposal from "
+                          << proposer_id.substr(0, 12) << "... for block "
+                          << proposal.index << std::endl;
+            }
+        } catch (const std::exception& e) {
+            response["status"] = "ERROR";
+            response["message"] = e.what();
+        }
+    }
+
     else {
         response["status"] = "ERROR";
         response["message"] = "Unknown path: " + path;
@@ -521,6 +646,11 @@ std::string ConsensusNode::handle_request(const std::string& method,
 
 void ConsensusNode::run_consensus_loop() {
     std::uniform_int_distribution<int> election_jitter(RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+
+    // Stabilize: wait for peer connections to establish before first election
+    std::this_thread::sleep_for(std::chrono::milliseconds(RAFT_STARTUP_STABILIZE_MS));
+    last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
 
     while (running.load()) {
         int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -653,7 +783,7 @@ void ConsensusNode::request_votes() {
     std::vector<Peer> current_peers = get_peers();
 
     int votes_needed = (current_peers.size() + 1) / 2 + 1;
-    int votes_granted = 1; // Vote for self
+    if (votes_needed < 2) votes_needed = 2; // At least self + 1
 
     json req_body;
     req_body["term"] = term;
@@ -661,34 +791,47 @@ void ConsensusNode::request_votes() {
     req_body["last_log_index"] = blockchain.chain_length();
     req_body["last_log_hash"] = blockchain.get_chain_hash();
 
-    for (const auto& peer : current_peers) {
-        std::string resp = send_to_peer(peer.endpoint,
-                                         "/api/raft/request_vote",
-                                         req_body.dump());
-        if (!resp.empty()) {
-            try {
-                json j = json::parse(resp);
-                if (j.value("vote_granted", false)) {
-                    votes_granted++;
-                }
-                if (j.value("term", 0LL) > term) {
-                    become_follower(j["term"]);
-                    return;
-                }
-            } catch (...) {}
+    std::string body = req_body.dump();
+
+    // Parallel vote requests to all peers
+    std::vector<std::string> responses(current_peers.size());
+    {
+        std::vector<std::thread> threads;
+        for (size_t i = 0; i < current_peers.size(); i++) {
+            threads.emplace_back([this, &current_peers, &responses, i, &body]() {
+                responses[i] = send_to_peer(current_peers[i].endpoint,
+                                            "/api/raft/request_vote", body);
+            });
         }
+        for (auto& t : threads) {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    int votes_granted = 1; // Vote for self
+    for (const auto& resp : responses) {
+        if (resp.empty()) continue;
+        try {
+            json j = json::parse(resp);
+            if (j.value("vote_granted", false)) {
+                votes_granted++;
+            }
+            if (j.value("term", 0LL) > term) {
+                become_follower(j["term"]);
+                return;
+            }
+        } catch (...) {}
     }
 
     if (votes_granted >= votes_needed) {
         become_leader();
     }
-    // Not enough votes: stay as CANDIDATE, will retry with new term
-    // after election timeout from run_consensus_loop
 }
 
 void ConsensusNode::send_heartbeats() {
     int64_t term = current_term.load();
     std::vector<Peer> current_peers = get_peers();
+    if (current_peers.empty()) return;
 
     json req_body;
     req_body["term"] = term;
@@ -698,23 +841,23 @@ void ConsensusNode::send_heartbeats() {
     req_body["leader_commit"] = blockchain.chain_length();
     req_body["entries"] = json::array();
 
+    std::string body = req_body.dump();
+
     for (auto& peer : current_peers) {
         std::string resp = send_to_peer(peer.endpoint,
                                          "/api/raft/append_entries",
-                                         req_body.dump());
+                                         body);
         if (!resp.empty()) {
             try {
                 json j = json::parse(resp);
                 peer.is_active = true;
                 if (j.value("term", 0LL) > term) {
                     become_follower(j["term"]);
-                    // Update peers list with activity status
                     {
                         std::lock_guard<std::mutex> lock(peers_mutex);
                         for (auto& p : peers) {
                             if (p.endpoint == peer.endpoint) {
-                                p.is_active = peer.is_active;
-                                break;
+                                p.is_active = peer.is_active; break;
                             }
                         }
                     }
@@ -724,13 +867,11 @@ void ConsensusNode::send_heartbeats() {
                 peer.is_active = false;
             }
         }
-        // Sync activity back to main peers list
         {
             std::lock_guard<std::mutex> lock(peers_mutex);
             for (auto& p : peers) {
                 if (p.endpoint == peer.endpoint) {
-                    p.is_active = peer.is_active;
-                    break;
+                    p.is_active = peer.is_active; break;
                 }
             }
         }
@@ -757,7 +898,25 @@ void ConsensusNode::replicate_log() {
     req_body["entries"] = entries;
 
     for (const auto& peer : current_peers) {
-        send_to_peer(peer.endpoint, "/api/raft/append_entries", req_body.dump());
+        std::string resp = send_to_peer(peer.endpoint,
+                                        "/api/raft/append_entries",
+                                        req_body.dump());
+        if (resp.empty()) {
+            std::cerr << "[NODE " << node_id << "] replicate_log to "
+                      << peer.endpoint << " FAILED (no response)" << std::endl;
+        } else {
+            try {
+                json j = json::parse(resp);
+                if (!j.value("success", false)) {
+                    std::cerr << "[NODE " << node_id << "] replicate_log to "
+                              << peer.endpoint << " rejected (success=false)"
+                              << std::endl;
+                }
+            } catch (...) {
+                std::cerr << "[NODE " << node_id << "] replicate_log to "
+                          << peer.endpoint << " bad JSON response" << std::endl;
+            }
+        }
     }
 }
 

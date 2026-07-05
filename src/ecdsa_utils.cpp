@@ -95,11 +95,11 @@ std::string ECDSAUtils::sign(const std::string& priv_key_hex, const std::string&
 
     EC_KEY* ec_key = EC_KEY_new_by_curve_name(CURVE_NID);
     EC_KEY_set_private_key(ec_key, priv_bn);
-    BN_free(priv_bn);
 
     const EC_GROUP* group = EC_KEY_get0_group(ec_key);
     EC_POINT* pub_pt = EC_POINT_new(group);
     EC_POINT_mul(group, pub_pt, priv_bn, nullptr, nullptr, nullptr);
+    BN_free(priv_bn);
     EC_KEY_set_public_key(ec_key, pub_pt);
     EC_POINT_free(pub_pt);
 
