@@ -114,6 +114,9 @@ int cmd_node(const std::string& config_path) {
     ConsensusNode node(cfg.listen_addr, data_dir, cfg.priv_key, cfg.pub_key);
     g_node = &node;
 
+    // Register self as the first validator
+    node.add_validator(node_id, cfg.pub_key, cfg.listen_addr);
+
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
@@ -137,7 +140,11 @@ int cmd_node(const std::string& config_path) {
                 std::string peer_id = j.value("node_id", "");
                 std::string peer_pub = j.value("pub_key", "");
                 std::cout << "[+] Connected to peer " << peer_id << " @ " << peer << std::endl;
-                node.add_peer(peer, peer_pub);
+                node.add_peer(peer, peer_pub, peer_id);
+                if (!peer_id.empty() && !peer_pub.empty()) {
+                    node.add_validator(peer_id, peer_pub, peer);
+                    std::cout << "[+] Peer " << peer_id << " registered as validator" << std::endl;
+                }
             } catch (...) {}
         }
     }

@@ -34,7 +34,8 @@ public:
     bool is_running() const { return running.load(); }
 
     // Peer management
-    void add_peer(const std::string& endpoint, const std::string& pub_key_hex = "");
+    void add_peer(const std::string& endpoint, const std::string& pub_key_hex = "",
+                  const std::string& peer_node_id = "");
     void remove_peer(const std::string& endpoint);
     std::vector<Peer> get_peers() const;
     void set_known_peers(const std::vector<std::string>& endpoints);
@@ -45,6 +46,9 @@ public:
                        const std::string& student_name,
                        const std::string& student_id,
                        const std::string& encrypted_details = "");
+    void add_validator(const std::string& node_id,
+                       const std::string& pub_key_hex,
+                       const std::string& endpoint);
 
     StrictBlockchain& get_blockchain() { return blockchain; }
     const StrictBlockchain& get_blockchain() const { return blockchain; }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureChain Live Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<div id="header">
+  <h1><span class="icon">⛓️</span> SecureChain <span class="dim">Live Dashboard</span></h1>
+  <div id="node-counts">
+    <span class="badge leader-badge">0 LEADER</span>
+    <span class="badge follower-badge">0 FOLLOWER</span>
+    <span class="badge offline-badge">0 OFFLINE</span>
+    <span id="block-count" class="badge block-badge">0 BLOCKS</span>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topology-panel">
+    <div id="vis"></div>
+    <div id="vis-tooltip"></div>
+  </div>
+  <div id="side-panel">
+    <div id="blockchain-panel">
+      <h3>⛓️ Blockchain</h3>
+      <div id="chain-container"></div>
+    </div>
+    <div id="logs-panel">
+      <h3>📋 Live Logs</h3>
+      <div id="log-tabs"></div>
+      <div id="log-content"></div>
+    </div>
+  </div>
+</div>
+
+<script src="vis.js"></script>
+</body>
+</html>

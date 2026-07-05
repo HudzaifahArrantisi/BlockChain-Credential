@@ -1,0 +1,95 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e17; color: #c8d6e5; font-family: 'Segoe UI', -apple-system, sans-serif; overflow: hidden; height: 100vh; }
+
+#header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px; background: #111827; border-bottom: 1px solid #1e293b;
+}
+#header h1 { font-size: 20px; font-weight: 400; }
+#header h1 .icon { margin-right: 8px; }
+#header h1 .dim { color: #64748b; font-weight: 300; }
+#node-counts { display: flex; gap: 8px; }
+.badge { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.leader-badge { background: #1a3a2a; color: #4ade80; border: 1px solid #4ade80; }
+.follower-badge { background: #1a2a3a; color: #60a5fa; border: 1px solid #60a5fa; }
+.offline-badge { background: #2a1a1a; color: #f87171; border: 1px solid #f87171; }
+.block-badge { background: #2a1a3a; color: #c084fc; border: 1px solid #c084fc; }
+
+#main { display: flex; height: calc(100vh - 57px); }
+#topology-panel { flex: 1; position: relative; min-width: 0; }
+#vis { width: 100%; height: 100%; }
+#vis-tooltip {
+  position: absolute; background: #1e293b; border: 1px solid #334155;
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s; white-space: nowrap;
+}
+#vis-tooltip.visible { opacity: 1; }
+
+#side-panel {
+  width: 420px; min-width: 420px; display: flex; flex-direction: column;
+  border-left: 1px solid #1e293b; background: #0f172a;
+}
+
+#blockchain-panel { height: 45%; display: flex; flex-direction: column; }
+#blockchain-panel h3, #logs-panel h3 {
+  padding: 10px 16px; font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px; color: #94a3b8;
+  border-bottom: 1px solid #1e293b; flex-shrink: 0;
+}
+#chain-container {
+  flex: 1; overflow-y: auto; padding: 12px;
+}
+
+.block-card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 8px;
+  animation: slideIn 0.3s ease-out;
+}
+.block-card.new { border-color: #4ade80; box-shadow: 0 0 12px rgba(74,222,128,0.15); }
+.block-card.genesis { border-color: #c084fc; }
+.block-card .idx { font-size: 11px; color: #94a3b8; margin-bottom: 2px; }
+.block-card .student { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+.block-card .hash { font-size: 11px; color: #64748b; word-break: break-all; margin-top: 2px; }
+.block-card .time { font-size: 11px; color: #64748b; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#logs-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid #1e293b; }
+#log-tabs {
+  display: flex; overflow-x: auto; padding: 6px 12px 0; gap: 4px; flex-shrink: 0;
+}
+.log-tab {
+  padding: 4px 12px; font-size: 12px; border-radius: 6px 6px 0 0;
+  cursor: pointer; border: none; color: #94a3b8; background: transparent;
+  white-space: nowrap;
+}
+.log-tab:hover { background: #1e293b; }
+.log-tab.active { background: #1e293b; color: #e2e8f0; }
+.log-tab .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.log-tab.offline { opacity: 0.5; }
+
+#log-content {
+  flex: 1; overflow-y: auto; padding: 8px 16px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px; line-height: 1.6; background: #020617;
+}
+.log-line { color: #94a3b8; }
+.log-line.leader { color: #4ade80; }
+.log-line.follower { color: #60a5fa; }
+.log-line.candidate { color: #fbbf24; }
+.log-line.offline { color: #f87171; }
+.log-line .ts { color: #475569; margin-right: 8px; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+@media (max-width: 900px) {
+  #main { flex-direction: column; }
+  #side-panel { width: 100%; min-width: 0; border-left: none; border-top: 1px solid #1e293b; }
+  #blockchain-panel { height: 40%; }
+}

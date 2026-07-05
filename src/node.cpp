@@ -268,15 +268,18 @@ ConsensusNode::~ConsensusNode() {
 
 // ── Peer Management ────────────────────────────────────────────────────────
 
-void ConsensusNode::add_peer(const std::string& endpoint, const std::string& pub_key_hex) {
+void ConsensusNode::add_peer(const std::string& endpoint, const std::string& pub_key_hex,
+                              const std::string& peer_node_id) {
     std::lock_guard<std::mutex> lock(peers_mutex);
     for (auto& p : peers) {
         if (p.endpoint == endpoint) {
             if (!pub_key_hex.empty()) p.pub_key_hex = pub_key_hex;
+            if (!peer_node_id.empty()) p.node_id = peer_node_id;
             return;
         }
     }
     Peer p;
+    p.node_id = peer_node_id;
     p.endpoint = endpoint;
     p.pub_key_hex = pub_key_hex;
     p.is_active = false;
@@ -490,6 +493,15 @@ std::string ConsensusNode::handle_request(const std::string& method,
         std::string peer_pub_key = request.value("pub_key", "");
         if (!peer_endpoint.empty()) {
             add_peer(peer_endpoint, peer_pub_key);
+            // Register connecting peer as a validator
+            if (!peer_pub_key.empty()) {
+                std::string peer_id = ECDSAUtils::pub_key_to_short_id(peer_pub_key);
+                if (!blockchain.has_validator(peer_id)) {
+                    add_validator(peer_id, peer_pub_key, peer_endpoint);
+                    std::cout << "[NODE " << node_id << "] Peer " << peer_id
+                              << " registered as validator via handshake" << std::endl;
+                }
+            }
         }
         response["status"] = "OK";
         response["node_id"] = node_id;
@@ -524,8 +536,12 @@ void ConsensusNode::run_consensus_loop() {
                 break;
             }
             case NodeRole::CANDIDATE: {
+                int64_t elapsed_since_election = now - last_heartbeat_time.load();
+                if (elapsed_since_election > election_jitter(rng)) {
+                    become_candidate();
+                }
                 request_votes();
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 break;
             }
             case NodeRole::LEADER: {
@@ -541,6 +557,8 @@ void ConsensusNode::become_follower(int64_t term) {
     role.store(NodeRole::FOLLOWER);
     current_term.store(term);
     voted_for = "";
+    last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
 void ConsensusNode::become_candidate() {
@@ -663,10 +681,9 @@ void ConsensusNode::request_votes() {
 
     if (votes_granted >= votes_needed) {
         become_leader();
-    } else {
-        // Election failed, stay follower and wait for next timeout
-        become_follower(term);
     }
+    // Not enough votes: stay as CANDIDATE, will retry with new term
+    // after election timeout from run_consensus_loop
 }
 
 void ConsensusNode::send_heartbeats() {
@@ -799,6 +816,18 @@ bool ConsensusNode::propose_block(const std::string& file_hash,
 
     std::cerr << "[NODE] Cannot propose: no leader known" << std::endl;
     return false;
+}
+
+void ConsensusNode::add_validator(const std::string& v_node_id,
+                                   const std::string& v_pub_key_hex,
+                                   const std::string& v_endpoint) {
+    Validator v;
+    v.node_id = v_node_id;
+    v.pub_key_hex = v_pub_key_hex;
+    v.endpoint = v_endpoint;
+    blockchain.add_validator(v);
+    std::cout << "[NODE " << node_id << "] Validator added: "
+              << v_node_id << " @ " << v_endpoint << std::endl;
 }
 
 // ── Networking ─────────────────────────────────────────────────────────────
