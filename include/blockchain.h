@@ -88,7 +88,6 @@ public:
     Block get_last_block() const;
     std::string get_last_block_hash() const;
 
-    // Off-chain vault
     Block prepare_block_proposal(const std::string& file_hash,
                                   const std::string& encrypted_label,
                                   const std::string& student_name,
@@ -97,14 +96,11 @@ public:
     bool append_multi_sig_block(const Block& block);
     json get_offchain_details(const std::string& file_hash) const;
 
-    // Key access (for multi-sig operations)
     std::string get_node_priv_key() const { return node_priv_key; }
     std::string get_node_pub_key() const { return node_pub_key; }
 
-    // Make calculate_block_hash public for external use
     std::string calculate_block_hash(const Block& block) const;
 
-    // Validator management
     void add_validator(const Validator& v);
     void remove_validator(const std::string& node_id);
     std::vector<Validator> get_validators() const { return validators; }
