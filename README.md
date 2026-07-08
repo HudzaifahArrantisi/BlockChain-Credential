@@ -30,6 +30,318 @@ Kalau output `STATUS=VERIFIED` → ASLI. Kalau error → PALSU/DIUBAH.
 
 ---
 
+## 📊 FLOWCHART LENGKAP: Alur Pengcapan & Verifikasi Ijazah
+
+### 🔄 FASE 1: PENDAFTARAN (REGISTRATION) — Dari File Asli ke Blockchain Pusat
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     TAHAP 1: USER UPLOAD FILE PDF ASLI                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │  📄 User Upload via GUI/CLI   │
+                    │  File: ijazah_asli.pdf        │
+                    │  Kode: UGM-010203-HUDZAIFAH   │
+                    │  Nama: Hudzaifah Rahman       │
+                    │  NIM: 010203                  │
+                    └───────────────────┬───────────┘
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  TAHAP 2: SECURITY LAYER 1 — HASHING                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: document_handler.cpp + crypto_utils.cpp                       │
+│  Proses: SHA-256(file content)                                              │
+│  Output: file_hash = "a1b2c3d4e5f6g7h8..."  (64 hex chars)                 │
+│  Fungsi: Deteksi jika file diedit (1 bit → hash berbeda)                   │
+│  Status: ✅ Sidik jari file unik, immutable                                 │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              TAHAP 3: SECURITY LAYER 2 — LABEL ENCRYPTION                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: crypto_utils.cpp (OpenSSL EVP AES-256-CBC)                    │
+│  Input: label_plain = "UGM-010203-HUDZAIFAH"                                │
+│  Key: MASTER_KEY (hardcoded di main.cpp, GANTI PRE-PROD!)                   │
+│  Proses: AES-256-CBC Encrypt(label_plain, MASTER_KEY)                       │
+│  Output: encrypted_label = "x7f8g9h0i1j2k3l4m5..."                         │
+│  Fungsi: Ownership verification (hanya pemilik kunci bisa decrypt)          │
+│  Status: 🔐 Encrypted, secure                                               │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│            TAHAP 4: SECURITY LAYER 3 — OFF-CHAIN VAULT STORAGE               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: offchain_vault.cpp                                            │
+│  Lokasi: data/offchain_vault/<details_hash>.json                            │
+│  Details Hash = SHA-256( { "student_name": "Hudzaifah Rahman",              │
+│                             "student_id": "010203" } )                      │
+│  File Isi:  {                                                               │
+│    "student_name": "Hudzaifah Rahman",                                      │
+│    "student_id": "010203",                                                  │
+│    "file_hash": "a1b2c3d4e5f6g7h8...",                                      │
+│    "timestamp": "2024-07-09T14:30:00Z"                                      │
+│  }                                                                           │
+│  Fungsi: Simpan data sensitif TERPISAH dari blockchain (privacy + scale)   │
+│  Status: 💾 Stored off-chain, hanya hash di blockchain                      │
+│  Catatan: Vault file TIDAK dikirim ke validator, hanya disimpan lokal!      │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│       TAHAP 5: SECURITY LAYER 4 — PROPOSE BLOCK KE VALIDATOR (LEADER)        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: main.cpp (register cmd) → HTTP POST /propose                   │
+│  Block Data (tanpa vault details):  {                                       │
+│    "file_hash": "a1b2c3d4e5f6g7h8...",                                      │
+│    "encrypted_label": "x7f8g9h0i1j2k3l4m5...",                             │
+│    "details_hash": "vault_sha256_hash...",                                  │
+│    "student_name": "Hudzaifah Rahman",                   ← FOR DISPLAY      │
+│    "student_id": "010203",                               ← FOR DISPLAY      │
+│    "timestamp": "2024-07-09T14:30:00Z"                                      │
+│  }                                                                           │
+│  Target: Leader node (UGM: http://localhost:8545/propose)                   │
+│  Status: 📡 Proposal sent to Raft leader                                    │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│     TAHAP 6: SECURITY LAYER 5 — MULTI-SIG VALIDATION (≥2 of 3 VALIDATORS)    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: ecdsa_utils.cpp (ECDSA secp256k1)                             │
+│  Validators (3 kampus):                                                     │
+│    🔑 UGM   — Private key: .keystore/ugm.key                                │
+│    🔑 UI    — Private key: .keystore/ui.key                                 │
+│    🔑 ITB   — Private key: .keystore/itb.key                                │
+│                                                                              │
+│  Proses:                                                                    │
+│    1️⃣  Leader compute: block_hash = SHA-256(block_data)                    │
+│    2️⃣  Leader sign: sig_UGM = ECDSA_Sign(block_hash, ugm_privkey)          │
+│    3️⃣  Kirim ke UI → UI sign: sig_UI = ECDSA_Sign(block_hash, ui_privkey)  │
+│    4️⃣  Kirim ke ITB → ITB sign: sig_ITB = ECDSA_Sign(...)                  │
+│    5️⃣  Kumpulkan signatures: [sig_UGM, sig_UI, sig_ITB]                    │
+│                                                                              │
+│  Validasi:  ✅ UGM signature verified                                       │
+│             ✅ UI signature verified                                        │
+│             ❌ ITB signature NOT available (OK, ≥2 cukup)                   │
+│             Result: 2/3 signatures valid ✓ APPROVED                         │
+│                                                                              │
+│  Status: ✍️ Multi-sig consensus achieved                                    │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│      TAHAP 7: SECURITY LAYER 6 — RAFT CONSENSUS & BLOCKCHAIN COMMIT          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Komponen: node.cpp (Raft implementation)                                │
+│  Blockchain Storage: data/blockchain.json                                   │
+│                                                                              │
+│  Block Final (dengan signatures):                                           │
+│  {                                                                           │
+│    "index": 42,                                                             │
+│    "timestamp": "2024-07-09T14:30:00Z",                                     │
+│    "file_hash": "a1b2c3d4e5f6g7h8...",                                      │
+│    "encrypted_label": "x7f8g9h0i1j2k3l4m5...",                             │
+│    "details_hash": "vault_sha256_hash...",                                  │
+│    "student_name": "Hudzaifah Rahman",                                      │
+│    "student_id": "010203",                                                  │
+│    "hash": "block_hash_sha256",                                             │
+│    "previous_hash": "prev_block_hash_sha256",  ← Chain linkage!            │
+│    "signatures": [                                                          │
+│      { "validator": "UGM", "signature": "sig_UGM_hex" },                   │
+│      { "validator": "UI", "signature": "sig_UI_hex" }                      │
+│    ]                                                                        │
+│  }                                                                           │
+│                                                                              │
+│  Raft Consensus:                                                            │
+│    🔷 Leader (UGM) punya block di log                                       │
+│    📤 Leader kirim AppendEntries RPC ke Followers (UI, ITB)                 │
+│    ✅ Follower UI menerima & simpan ke log                                  │
+│    ✅ Follower ITB menerima & simpan ke log                                 │
+│    🔄 Majority replicated (2 of 3) → COMMIT!                                │
+│    💾 Leader apply block to blockchain.json                                 │
+│    💾 Followers apply block to blockchain.json                              │
+│                                                                              │
+│  Result: ⛓️  Block #42 tersimpan di 3 node (UGM, UI, ITB)                  │
+│           🔗 Blockchain replicated & synchronized                           │
+│  Status: ✅ COMMIT successful, ijazah recorded                              │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              TAHAP 8: DATABASE PUSAT TERSINKRONISASI                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📌 Lokasi: data/blockchain.json (setiap node punya copy)                   │
+│                                                                              │
+│  Node UGM blockchain.json:                                                  │
+│    [Block #0, Block #1, ..., Block #42 ✅]                                 │
+│                                                                              │
+│  Node UI blockchain.json:                                                   │
+│    [Block #0, Block #1, ..., Block #42 ✅] (replicated)                    │
+│                                                                              │
+│  Node ITB blockchain.json:                                                  │
+│    [Block #0, Block #1, ..., Block #42 ✅] (replicated)                    │
+│                                                                              │
+│  ✨ Semua node punya data SAMA → Distributed Ledger!                        │
+│  Status: 🌐 Database pusat (replicated across 3 validator nodes)            │
+└────────────────────────────────────────────────────────────────────────────┘
+                                    ▼
+           ┌──────────────────────────────────────────┐
+           │  ✅ PENDAFTARAN SELESAI                  │
+           │  Ijazah tercatat di blockchain publik   │
+           │  Aman, immutable, terdistribusi         │
+           └──────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│                   FASE 2: VERIFIKASI — User Cek Keaslian                    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │  📄 User Upload File (Verify) │
+                    │  File: ijazah_asli.pdf        │
+                    │  Kode: UGM-010203-HUDZAIFAH   │
+                    └───────────────────┬───────────┘
+                                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 1: Hash File Yg Di-upload                  │
+         │ file_hash_now = SHA-256(ijazah_asli.pdf)         │
+         │            = "a1b2c3d4e5f6g7h8..."              │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 2: Query Blockchain (find by code)          │
+         │ GET /chain → search block dgn kode UGM-010203... │
+         │ Found Block #42:                                 │
+         │   file_hash_stored = "a1b2c3d4e5f6g7h8..."       │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 3: Compare Hashes                           │
+         │ file_hash_now:    "a1b2c3d4e5f6g7h8..."         │
+         │ file_hash_stored: "a1b2c3d4e5f6g7h8..."         │
+         │ Match? ✅ YES → File TIDAK DIEDIT!              │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 4: Decrypt Label (Ownership Verify)         │
+         │ encrypted_label = "x7f8g9h0i1j2k3l4m5..."       │
+         │ Decrypt(encrypted_label, MASTER_KEY)            │
+         │         ↓                                        │
+         │ label_decrypted = "UGM-010203-HUDZAIFAH"        │
+         │ label_input = "UGM-010203-HUDZAIFAH"            │
+         │ Match? ✅ YES → File ownership verified!        │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 5: Verify Multi-Sig (Validator Check)       │
+         │ Block signatures: [sig_UGM ✅, sig_UI ✅]        │
+         │ Verify each:                                     │
+         │   ✅ ECDSA_Verify(block_hash, sig_UGM, ugm_pub)  │
+         │   ✅ ECDSA_Verify(block_hash, sig_UI, ui_pub)    │
+         │ Threshold: 2/3 ✅ PASSED                         │
+         │ Status: ✍️ Multi-sig consensus validated        │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 6: Validate Blockchain Integrity            │
+         │ Check chain linkage:                             │
+         │   Block #41: hash = "xyz..."                     │
+         │   Block #42: previous_hash = "xyz..." ✅         │
+         │   Block #42: hash = "abc..."                     │
+         │   Block #43: previous_hash = "abc..." ✅         │
+         │ Result: ⛓️ Chain valid, no tampering            │
+         │ Status: Chain validation PASSED                  │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+         ┌──────────────────────────────────────────────────┐
+         │ STEP 7: Retrieve Off-Chain Vault (Optional)      │
+         │ details_hash_stored = "vault_hash..."            │
+         │ Load: data/offchain_vault/vault_hash.json        │
+         │ Content: {                                       │
+         │   "student_name": "Hudzaifah Rahman",           │
+         │   "student_id": "010203"                         │
+         │ }                                                │
+         │ Verify: SHA-256(content) == details_hash ✅     │
+         │ Status: 💾 Vault data matched                    │
+         └──────────────┬───────────────────────────────────┘
+                        ▼
+                ┌───────────────────────────────────┐
+                │  🎉 ALL CHECKS PASSED!           │
+                │  STATUS = VERIFIED ✅            │
+                │                                   │
+                │  Display to User:                 │
+                │  ✅ File Asli (tidak diedit)     │
+                │  ✅ Kepemilikan Valid            │
+                │  ✅ Ditandatangani 2/3 Validator │
+                │  ✅ Blockchain Valid             │
+                │  ✅ Vault Match                  │
+                │                                   │
+                │  Nama: Hudzaifah Rahman          │
+                │  NIM: 010203                      │
+                │  Kode: UGM-010203-HUDZAIFAH      │
+                │  Verified: 2024-07-09T14:30:00Z  │
+                └───────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FAILURE SCENARIOS (Ijazah FAKE)                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+❌ SKENARIO 1: FILE DIEDIT
+  User upload: ijazah_fake.pdf (diedit, ubah nama)
+  file_hash_now = SHA-256(ijazah_fake.pdf) = "zzz999..."
+  file_hash_stored (di blockchain) = "a1b2c3d4e5f6g7h8..."
+  Compare: "zzz999..." ≠ "a1b2c3d4e5f6g7h8..."
+  ❌ STATUS = FAILED (File tampered/modified)
+
+❌ SKENARIO 2: IJAZAH TIDAK TERDAFTAR (PALSU)
+  User coba verify: fake_ijazah.pdf
+  Kode: "UGM-FAKE-999"
+  Query blockchain: Cari blok dgn kode "UGM-FAKE-999"
+  Result: NOT FOUND
+  ❌ STATUS = NOT_FOUND (Diploma never registered)
+
+❌ SKENARIO 3: LABEL SALAH (WRONG KEY)
+  File valid, tapi decrypt label dgn key salah
+  Decrypt(encrypted_label, WRONG_KEY) = "garbled..."
+  Compare: "garbled..." ≠ "UGM-010203-HUDZAIFAH"
+  ❌ STATUS = FAILED (Label decryption error / wrong key)
+
+❌ SKENARIO 4: BLOCKCHAIN CORRUPT (Tampered Chain)
+  Attacker edit blockchain.json: ubah Block #42 hash
+  Tapi Block #43 masih link ke hash lama
+  Validate chain linkage: previous_hash ≠ Block #42 hash
+  ❌ STATUS = FAILED (Blockchain chain broken / corrupted)
+
+❌ SKENARIO 5: SIGNATURE PALSU (< 2 validator)
+  Attacker forge block dgn signature sendiri (bukan validator)
+  Multi-sig verify:
+    ✅ UGM signature: VALID
+    ❌ UI signature: INVALID (not real validator key)
+    ❌ ITB signature: INVALID
+  Threshold: 1/3 ✗ FAILED
+  ❌ STATUS = FAILED (Multi-sig validation failed)
+```
+
+### 📌 Ringkasan Flowchart
+
+| Tahap | Proses | Output | Lokasi Data |
+|-------|--------|--------|------------|
+| 1 | User Upload | PDF file | GUI/CLI input |
+| 2 | SHA-256 Hash | `file_hash` (64 hex) | Memory → Blockchain |
+| 3 | AES Encrypt | `encrypted_label` | Memory → Blockchain |
+| 4 | Off-Chain Vault | `details_hash` + vault JSON | `data/offchain_vault/` |
+| 5 | Propose Block | HTTP POST to Leader | Raft log |
+| 6 | Multi-Sig | ≥2 validator signatures | Block.signatures[] |
+| 7 | Raft Consensus | AppendEntries RPC | All nodes' blockchain.json |
+| 8 | Finalize | Block committed | `data/blockchain.json` (3 copies) |
+| V1 | Hash Verify | Compare file_hash | Blockchain query |
+| V2 | Decrypt Label | Compare label plain | MASTER_KEY decrypt |
+| V3 | Multi-Sig Verify | Check ≥2 signatures | Public key verification |
+| V4 | Chain Validate | Check linkage | blockchain.json traversal |
+| V5 | Vault Match | Compare details_hash | Off-chain vault lookup |
+
+---
+
 ## 📋 Fitur Lengkap
 
 ### CLI — 15+ Perintah
