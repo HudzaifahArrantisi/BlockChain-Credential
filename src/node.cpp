@@ -29,8 +29,8 @@
 
 static const int SERVER_PORT = 0;
 static const int RAFT_HEARTBEAT_MS = 400;
-static const int RAFT_ELECTION_MIN_MS = 2000;
-static const int RAFT_ELECTION_MAX_MS = 4000;
+static const int RAFT_ELECTION_MIN_MS = 4000;
+static const int RAFT_ELECTION_MAX_MS = 10000;
 static const int RAFT_STARTUP_STABILIZE_MS = 4000;
 static const int HTTP_BUFFER_SIZE = 65536;
 
@@ -398,7 +398,9 @@ void ConsensusNode::run_server() {
     // Update listen_addr with actual port
     listen_addr = "0.0.0.0:" + std::to_string(actual_port);
 
-    // Use blocking accept with select timeout for clean shutdown
+    // Single-threaded accept-and-handle loop.
+    // Election timeout (4-10s) provides ample buffer so a slow API call
+    // won't cause a missed heartbeat.
     fd_set read_fds;
     timeval tv;
     tv.tv_sec = 0;
@@ -427,15 +429,11 @@ void ConsensusNode::run_server() {
         try {
             response_body = handle_request(method, path, body);
         } catch (const std::exception& e) {
-            std::cerr << "[NODE] Unhandled exception in handle_request: "
-                      << e.what() << std::endl;
             json err;
             err["status"] = "ERROR";
             err["message"] = e.what();
             response_body = err.dump();
         } catch (...) {
-            std::cerr << "[NODE] Unknown unhandled exception in handle_request"
-                      << std::endl;
             json err;
             err["status"] = "ERROR";
             err["message"] = "Unknown internal error";

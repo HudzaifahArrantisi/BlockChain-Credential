@@ -11,27 +11,38 @@ import urllib.request
 import urllib.error
 import socketserver
 import sys
+import subprocess
+import os
+import tempfile
+import base64
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-DEFAULT_NODES = [
-    {"port": 8545, "label": "Node A"},
-    {"port": 8546, "label": "Node B"},
-    {"port": 8547, "label": "Node C"},
-    {"port": 8548, "label": "Node D"},
-    {"port": 8549, "label": "Node E"},
-    {"port": 8550, "label": "Node F"},
-    {"port": 8551, "label": "Node G"},
-    {"port": 8552, "label": "Node H"},
-    {"port": 8553, "label": "Node I"},
-    {"port": 8554, "label": "Node J"},
-]
+# PDF security & registration pipeline
+sys.path.insert(0, str(ROOT / "gui"))
+import pdf_secure
+import scdv_core
+
+SECURED_FOLDER = str(ROOT / "secured")
+MANIFEST_FILE  = os.path.join(SECURED_FOLDER, "manifest.json")
+
+PORT_RANGE = list(range(8545, 8560))
+ACTIVE_NODES = {}  # port -> label (auto-discovered)
+NODE_LABELS = {
+    8545: "Node 1", 8546: "Node 2", 8547: "Node 3",
+    8548: "Node 4", 8549: "Node 5", 8550: "Node 6",
+    8551: "Node 7", 8552: "Node 8", 8553: "Node 9",
+    8554: "Node 10",
+}
+
+DEFAULT_NODES = [{"port": p, "label": NODE_LABELS.get(p, f"Node {p}")} for p in PORT_RANGE]
 
 SSE_CLIENTS = []
 SSE_LOCK = threading.Lock()
 
-NODE_LOG = {str(n["port"]): [] for n in DEFAULT_NODES}
+NODE_LOG = {}
 MAX_LOG_LINES = 200
 NODE_STATE = []
 BLOCKCHAIN_STATE = {"blocks": []}
@@ -40,25 +51,60 @@ BLOCKCHAIN_STATE = {"blocks": []}
 def fetch_json(url):
     try:
         req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with urllib.request.urlopen(req, timeout=2) as resp:
             return json.loads(resp.read().decode())
     except Exception:
         return None
 
 
+def scan_ports(port_list):
+    """Scan a list of ports, return ones that respond to /api/node/info"""
+    found = {}
+    for p in port_list:
+        info = fetch_json(f"http://127.0.0.1:{p}/api/node/info")
+        if info:
+            role = info.get("role", "UNKNOWN")
+            label = NODE_LABELS.get(p, f"Node {p}")
+            found[p] = label
+    return found
+
+
+NODE_FAIL_COUNT = {}
+
+
 def poll_nodes():
-    global NODE_STATE, BLOCKCHAIN_STATE
+    global ACTIVE_NODES, NODE_STATE, BLOCKCHAIN_STATE, NODE_FAIL_COUNT
+
+    # Initial scan
+    ACTIVE_NODES = scan_ports(PORT_RANGE)
+    scan_fast_counter = 0
+
     while True:
+        # ── Quick discovery: scan all ports every 2 cycles (4s) ──────
+        scan_fast_counter += 1
+        if scan_fast_counter >= 2:
+            newly_found = scan_ports(PORT_RANGE)
+            for p, lbl in newly_found.items():
+                if str(p) not in NODE_LOG:
+                    NODE_LOG[str(p)] = []
+                if p not in ACTIVE_NODES:
+                    ACTIVE_NODES[p] = lbl
+                    NODE_FAIL_COUNT[p] = 0
+                    print(f"[VIS] New node detected: {lbl}:{p}")
+            scan_fast_counter = 0
+
+        # ── Poll known nodes ─────────────────────────────────────────
         nodes_data = []
-        for nd in DEFAULT_NODES:
-            port = nd["port"]
+        to_remove = []
+        for port, label in list(ACTIVE_NODES.items()):
             info = fetch_json(f"http://127.0.0.1:{port}/api/node/info")
             if info:
+                NODE_FAIL_COUNT[port] = 0
                 nid = info.get("node_id", f"node_{port}")
                 nid_short = nid[:12] + "..." if len(nid) > 15 else nid
                 nodes_data.append({
                     "port": port,
-                    "label": nd["label"],
+                    "label": label,
                     "id": nid,
                     "id_short": nid_short,
                     "role": info.get("role", "UNKNOWN"),
@@ -72,18 +118,24 @@ def poll_nodes():
                 role = info.get("role", "?")
                 term = info.get("term", 0)
                 blk = info.get("blocks", 0)
-                log_line = f"[{ts}] [{nd['label']}:{port}] role={role} term={term} blocks={blk}"
+                log_line = f"[{ts}] [{label}:{port}] role={role} term={term} blocks={blk}"
+                if str(port) not in NODE_LOG:
+                    NODE_LOG[str(port)] = []
                 NODE_LOG[str(port)].append(log_line)
                 if len(NODE_LOG[str(port)]) > MAX_LOG_LINES:
                     NODE_LOG[str(port)].pop(0)
             else:
-                nodes_data.append({
-                    "port": port, "label": nd["label"],
-                    "id": "", "id_short": "",
-                    "role": "OFFLINE", "term": 0, "blocks": 0,
-                    "leader_id": "", "listener": f"0.0.0.0:{port}",
-                    "alive": False,
-                })
+                fail_count = NODE_FAIL_COUNT.get(port, 0) + 1
+                NODE_FAIL_COUNT[port] = fail_count
+                if fail_count >= 3:
+                    to_remove.append(port)
+
+        for port in to_remove:
+            lbl = ACTIVE_NODES.pop(port, None)
+            NODE_FAIL_COUNT.pop(port, None)
+            if lbl:
+                print(f"[VIS] Node offline (3 failures): {lbl}:{port}")
+
         NODE_STATE = nodes_data
 
         leader = next((n for n in nodes_data if n["role"] == "LEADER"), None)
@@ -94,6 +146,14 @@ def poll_nodes():
 
         broadcast_sse()
         time.sleep(2)
+
+        # ── Re-insert stale nodes from fail-count list (they may come back) ─
+        for port, cnt in list(NODE_FAIL_COUNT.items()):
+            if port not in ACTIVE_NODES and cnt > 0:
+                for p in PORT_RANGE:
+                    if p == port:
+                        ACTIVE_NODES[port] = NODE_LABELS.get(port, f"Node {port}")
+                        break
 
 
 def broadcast_sse():
@@ -181,6 +241,107 @@ class SSEHandler(http.server.SimpleHTTPRequestHandler):
             super().handle_one_request()
         except ConnectionError:
             pass
+
+    def do_POST(self):
+        if self.path == "/api/register":
+            self.handle_register()
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def handle_register(self):
+        """Full registration pipeline: stamp PDF -> encrypt -> blockchain -> save to data/uploads/."""
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            data = json.loads(body)
+
+            filename = data.get("filename", "upload.pdf")
+            file_b64 = data.get("file_data", "")
+            kode = data.get("kode", "")
+            nama = data.get("nama", "")
+            nim = data.get("nim", "")
+
+            if not all([file_b64, kode, nama, nim]):
+                self.send_json(json.dumps({"status": "ERROR", "message": "Missing fields"}))
+                return
+
+            # 1. Save uploaded original file
+            file_bytes = base64.b64decode(file_b64)
+            upload_dir = ROOT / "data" / "uploads"
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            src_path = upload_dir / filename
+            with open(src_path, "wb") as f:
+                f.write(file_bytes)
+
+            # 2. Stamp + encrypt via pdf_secure (visual stamp QR + HMAC + AES-256 password)
+            secured_dir = upload_dir  # simpan hasil aman di data/uploads/
+            temp_secured = os.path.join(str(secured_dir), f"temp_{nim}_SECURED.pdf")
+            sig = pdf_secure.stamp_and_secure(str(src_path), temp_secured, kode, nama, nim)
+
+            # 3. Register on blockchain via C++ exe (hashing the secured PDF)
+            res = scdv_core.register(temp_secured, kode, nama, nim)
+            status = "OK" if res.get("STATUS") == "OK" else "ERROR"
+            file_hash = res.get("HASH", "")
+
+            # 4. Rename temp -> permanent secured file in data/uploads/
+            secured_path = temp_secured
+            if file_hash:
+                secured_fn = f"{file_hash}_secured.pdf"
+                secured_path = os.path.join(str(secured_dir), secured_fn)
+                shutil.copy2(temp_secured, secured_path)
+                try:
+                    os.remove(temp_secured)
+                except OSError:
+                    pass
+
+            # 5. Also copy to secured/ manifest
+            os.makedirs(SECURED_FOLDER, exist_ok=True)
+            manifest_secured = os.path.join(SECURED_FOLDER, os.path.basename(secured_path))
+            shutil.copy2(secured_path, manifest_secured)
+
+            # 6. Write manifest entry
+            manifest = {}
+            try:
+                if os.path.exists(MANIFEST_FILE):
+                    with open(MANIFEST_FILE, "r") as f:
+                        manifest = json.load(f)
+            except Exception:
+                manifest = {}
+            manifest[nim] = {
+                "name": nama, "code": kode, "hash": file_hash,
+                "signature": sig, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "filename": os.path.basename(secured_path),
+            }
+            with open(MANIFEST_FILE, "w") as f:
+                json.dump(manifest, f, indent=2)
+
+            # 7. Broadcast log to SSE
+            ts = time.strftime("%H:%M:%S")
+            log_line = f"[{ts}] [WEB] Register: {nama} ({nim}) \u2192 {status} hash={file_hash[:16] if file_hash else '?'}"
+            for port in list(ACTIVE_NODES.keys()):
+                if str(port) not in NODE_LOG:
+                    NODE_LOG[str(port)] = []
+                NODE_LOG[str(port)].append(log_line)
+
+            # 8. Return confirmation (no file download)
+            self.send_json(json.dumps({
+                "status": status,
+                "message": (
+                    f"BERHASIL! {nama} ({nim}) terdaftar di blockchain.\n"
+                    f"File aman: {os.path.basename(secured_path)}\n"
+                    f"Kode unik: {kode}\n"
+                    f"Hash: {file_hash[:20]}..." if status == "OK"
+                    else f"Gagal registrasi blockchain"
+                ),
+                "hash": file_hash,
+                "signature": sig,
+            }))
+
+        except subprocess.TimeoutExpired:
+            self.send_json(json.dumps({"status": "ERROR", "message": "CLI timeout (30s)"}))
+        except Exception as ex:
+            self.send_json(json.dumps({"status": "ERROR", "message": str(ex)}))
 
     def log_message(self, fmt, *args):
         pass
