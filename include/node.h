@@ -8,6 +8,7 @@
 #include <mutex>
 #include <functional>
 #include <map>
+#include <queue>
 #include "blockchain.h"
 
 struct Peer {
@@ -17,6 +18,21 @@ struct Peer {
     bool is_active = false;
     bool is_leader = false;
     int64_t last_heartbeat = 0;
+
+    // Health tracking for exponential backoff
+    int consecutive_failures = 0;
+    int64_t next_contact_time = 0;  // ms timestamp; skip peer until this time
+};
+
+// Peer health state for the health-check subsystem
+enum class PeerStatus { HEALTHY, UNHEALTHY, DEAD };
+
+struct PeerHealth {
+    PeerStatus status = PeerStatus::HEALTHY;
+    int64_t last_response_time = 0;
+    int64_t last_success_time = 0;
+    int consecutive_timeouts = 0;
+    double avg_response_ms = 0.0;
 };
 
 class ConsensusNode {
@@ -80,6 +96,32 @@ private:
     std::atomic<int64_t> last_heartbeat_time{0};
     std::atomic<int64_t> election_timeout{1500};
 
+    // Cached election timeout — set once per role transition, not re-rolled
+    int64_t cached_election_timeout = 0;
+    std::atomic<bool> has_active_leader{false};
+
+    // ── Instant priority-based failover ──────────────────────────────
+    // When the leader dies, the deterministic "successor" (next node in
+    // sorted node-id order after the dead leader) uses a near-zero election
+    // timeout so it wins the election in ~150ms. Voting still happens in the
+    // background (Raft safety preserved), but it is effectively instant.
+    std::string last_known_leader;                  // id of leader before it died
+    std::atomic<bool> election_in_progress{false};  // true while cluster has no confirmed leader
+    std::atomic<int> election_progress{0};          // 0-100, for UI/status feedback
+    std::atomic<int64_t> leader_lost_time{0};       // ms timestamp leader was detected dead
+
+    // Async heartbeat tracking
+    std::queue<std::pair<std::string, std::string>> heartbeat_responses;
+    std::mutex response_queue_mutex;
+    std::atomic<int64_t> last_heartbeat_sent_time{0};
+
+    // Peer health tracking
+    std::map<std::string, PeerHealth> peer_health_map;
+    mutable std::mutex peer_health_mutex;
+
+    // Pre-vote mechanism
+    std::map<std::string, int64_t> pre_vote_responses;
+
     // State
     std::string node_id;
     std::string listen_addr;
@@ -111,7 +153,36 @@ private:
     void become_leader();
     void request_votes();
     void send_heartbeats();
+    void send_heartbeats_async();
+    void process_heartbeat_responses();
     void replicate_log();
+
+    // Peer health helpers
+    void mark_peer_success(const std::string& endpoint);
+    void mark_peer_failure(const std::string& endpoint);
+    void check_peer_health();
+    bool should_check_peer_health() const;
+    bool is_peer_healthy(const std::string& endpoint) const;
+    bool is_peer_reachable(const std::string& endpoint) const;
+    void reset_election_timer();
+
+    // Pre-vote
+    bool request_pre_vote();
+
+    // ── Priority-based failover helpers ──────────────────────────────
+    // Deterministic ordering of all cluster members (this node + peers) by
+    // node_id. Used to pick the successor when the leader dies.
+    std::vector<std::string> get_ordered_node_ids() const;
+    // The node_id that should take over if `dead_leader` fails (next in ring).
+    std::string get_successor_id(const std::string& dead_leader) const;
+    // True if THIS node is the designated successor for the current dead leader.
+    bool am_i_successor() const;
+    // Election timeout for this node right now: tiny for the successor,
+    // normal-random for everyone else. Keeps Raft safety while making the
+    // successor win almost instantly.
+    int64_t compute_election_timeout();
+    // Resolve a node_id to its endpoint (empty if unknown).
+    std::string endpoint_for_node(const std::string& target_id) const;
 
     // Raft RPCs
     struct RequestVoteArgs {

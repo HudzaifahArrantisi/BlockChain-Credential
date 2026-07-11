@@ -32,8 +32,10 @@ exe built **static** (`-static -static-libstdc++ -static-libgcc` + static OpenSS
 | `gui/pdf_secure.py` | Visible stamp (red badge + QR + watermark), HMAC-SHA256 metadata signature, AES-256 PDF password-lock |
 | `gui/scdv_core.py` | subprocess bridge GUI→exe, parses `KEY=VALUE` lines, runs exe with `cwd=ROOT` |
 | `gui/vis_server.py` | **Web dashboard server** (HTTP + SSE). Serves `gui/web/`, polls blockchain nodes, handles `/api/register` POST |
-| `gui/web/index.html` | Single-page dashboard: D3.js topology graph + Register Diploma form + blockchain log |
-| `gui/web/vis.js` | D3.js force-directed graph rendering |
+| `gui/web/index.html` | Single-page dashboard: Register Diploma form + blockchain log + logs overlay |
+| `gui/web/utils/graphAdapter.js` | Converts SSE node data → vis-network node/edge format |
+| `gui/web/hooks/useVisNetwork.js` | vis-network lifecycle manager (physics, fit, destroy) |
+| `gui/web/components/NetworkGraph.js` | Main graph component — vis-network + particle overlay + state change detection |
 
 Headers in `include/` mirror C++ sources 1:1.
 
@@ -63,12 +65,13 @@ Headers in `include/` mirror C++ sources 1:1.
 ### 1. Raft Consensus Stability
 - Election timeout increased to 4000-10000ms to reduce leader flapping
 - VisServer polling hardened: quick discovery every 4s, node removal after 3 consecutive failures
-- `vis.js` graph: all cables connect from leader to every node (green alive, red dead)
+- Graph (vis-network): all cables connect from leader to every node (green alive, red dead)
 
 ### 2. Web Dashboard Consolidation
-- Converted from `dev.html`/`dev.js`/`dev.css`/`style.css` to single `gui/web/index.html` (all CSS/JS inline + D3.js)
-- Fixed bug: `<header>` with pill badges was missing from HTML, causing `Cannot set properties of null (setting 'textContent')` — header re-added with `.leader-badge .pill-label`, `.follower-badge .pill-label`, `#block-num`, `#active-num`
+- Converted from `dev.html`/`dev.js`/`dev.css`/`style.css` to single `gui/web/index.html` (all CSS/JS inline)
+- Fixed bug: `<header>` with pill badges was missing from HTML, causing `Cannot set properties of null (setting 'textContent')` — header re-added
 - Old dev files deleted
+- **Logs moved from sidebar to floating overlay** at top-left of topology panel with per-node tab filtering (bright green theme)
 
 ### 3. Web Register Diploma — Full Pipeline
 **File: `gui/vis_server.py`** — `handle_register()` rewritten to run full security pipeline:
@@ -83,7 +86,28 @@ Headers in `include/` mirror C++ sources 1:1.
 5. Copies to `secured/` + writes `manifest.json`
 6. Returns JSON response (no file download)
 
-**File: `gui/web/index.html`** — upload handler updated: auto-download removed, shows success message only. The secured file lives in `data/uploads/`.
+### 4. D3.js → vis-network Migration
+Replaced raw D3.js force graph with **vis-network (v9.1.9)**:
+
+| Feature | Implementation |
+|---------|--------------|
+| Physics engine | `forceAtlas2Based` solver, auto-stabilization |
+| Node shapes | Leader = star (larger, glow), Follower = dot (blue), Candidate = orange, Offline = gray |
+| Edge curves | Smooth `curvedCW` with directional arrows |
+| Edge colors | Green (heartbeat), Blue (replication), Yellow (vote) — randomized particles |
+| Flowing particles | Canvas overlay with animated dots on leader→follower edges |
+| Zoom/Pan/Drag | vis-network built-in + double-click focus |
+| Node tooltips | Role, Term, Blocks, ID, Status (vis-network native) |
+| Grid dots | CSS radial-gradient background pattern |
+| State change detection | Leader election / node online-offline → physics re-enable + notification |
+
+| New file | Purpose |
+|----------|---------|
+| `gui/web/utils/graphAdapter.js` | `toVisNodes()`, `toAllEdges()` — pure data conversion |
+| `gui/web/hooks/useVisNetwork.js` | `create()`, `setNodes()`, `setEdges()`, physics control |
+| `gui/web/components/NetworkGraph.js` | `init()`, `update()`, `refresh()`, `fit()`, particle overlay |
+
+D3.js dependency completely removed; vis-network loaded from CDN.
 
 ## Current State (July 2026)
 
@@ -92,6 +116,7 @@ Headers in `include/` mirror C++ sources 1:1.
 - Web dashboard serves at `http://localhost:8080` via `python gui/vis_server.py`
 - Web Register flow works end-to-end (stamp → encrypt → blockchain)
 - Blockchain nodes run on ports 8545-8559 (3-node consortium + optional extras)
+- Graph uses **vis-network** with physics simulation, flowing particles, state change animations
 
 ## Known Issues / Edge Cases
 
@@ -100,6 +125,7 @@ Headers in `include/` mirror C++ sources 1:1.
 - `vis_server.py` imports `pdf_secure`/`scdv_core` via `sys.path.insert(0, ...)` — fragile path hack
 - No authentication on web dashboard (anyone can upload)
 - Secrets (`MASTER_KEY`, `CAMPUS_SIGNING_KEY`) still use dev defaults
+- vis-network canvas overlay may have coordinate mismatch at extreme zoom levels
 
 ## Next Steps (Suggested)
 

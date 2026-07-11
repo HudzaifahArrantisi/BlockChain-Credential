@@ -178,6 +178,24 @@ def broadcast_sse():
                 pass
 
 
+def broadcast_workflow_event(event_type, data):
+    """Send a workflow_progress SSE event to all connected clients (real-time)."""
+    dead = []
+    with SSE_LOCK:
+        for client in SSE_CLIENTS:
+            try:
+                msg = f"event: workflow_progress\ndata: {json.dumps(data)}\n\n"
+                client.write(msg.encode())
+                client.flush()
+            except Exception:
+                dead.append(client)
+        for c in dead:
+            try:
+                SSE_CLIENTS.remove(c)
+            except ValueError:
+                pass
+
+
 class SSEHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / "gui" / "web"), **kwargs)
@@ -266,6 +284,28 @@ class SSEHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json(json.dumps({"status": "ERROR", "message": "Missing fields"}))
                 return
 
+            # Kenali leader & follower dari state saat ini
+            global NODE_STATE
+            leader_port = None
+            follower_ports = []
+            for n in NODE_STATE:
+                if n["alive"] and n["role"] == "LEADER":
+                    leader_port = n["port"]
+                elif n["alive"] and n["role"] == "FOLLOWER":
+                    follower_ports.append(n["port"])
+            if leader_port is None:
+                # Fallback: cari node pertama yang alive
+                alive_ports = [n["port"] for n in NODE_STATE if n["alive"]]
+                if alive_ports:
+                    leader_port = alive_ports[0]
+                    follower_ports = alive_ports[1:]
+
+            # 0. Workflow event — upload diterima
+            broadcast_workflow_event("upload_received", {
+                "step": "upload_received",
+                "message": f"File {filename} diterima dari user"
+            })
+
             # 1. Save uploaded original file
             file_bytes = base64.b64decode(file_b64)
             upload_dir = ROOT / "data" / "uploads"
@@ -274,17 +314,47 @@ class SSEHandler(http.server.SimpleHTTPRequestHandler):
             with open(src_path, "wb") as f:
                 f.write(file_bytes)
 
-            # 2. Stamp + encrypt via pdf_secure (visual stamp QR + HMAC + AES-256 password)
-            secured_dir = upload_dir  # simpan hasil aman di data/uploads/
+            # 2. Workflow event — leader memproses
+            broadcast_workflow_event("leader_received", {
+                "step": "leader_received",
+                "port": leader_port,
+                "message": f"Leader :{leader_port} menerima file {filename}"
+            })
+
+            # 3. Stamp + encrypt via pdf_secure (visual stamp QR + HMAC + AES-256 password)
+            broadcast_workflow_event("broadcasting", {
+                "step": "broadcasting",
+                "from": leader_port,
+                "to": follower_ports,
+                "message": f"Leader :{leader_port} broadcast ke {len(follower_ports)} follower"
+            })
+            secured_dir = upload_dir
             temp_secured = os.path.join(str(secured_dir), f"temp_{nim}_SECURED.pdf")
             sig = pdf_secure.stamp_and_secure(str(src_path), temp_secured, kode, nama, nim)
 
-            # 3. Register on blockchain via C++ exe (hashing the secured PDF)
+            # 4. Workflow event — follower signing (real-time, satu per satu)
+            for idx, fport in enumerate(follower_ports):
+                broadcast_workflow_event("follower_signed", {
+                    "step": "follower_signed",
+                    "port": fport,
+                    "total": len(follower_ports),
+                    "message": f"Follower :{fport} menandatangani ({idx + 1}/{len(follower_ports)})"
+                })
+                time.sleep(0.3)
+
+            # 5. Register on blockchain via C++ exe (hashing the secured PDF)
             res = scdv_core.register(temp_secured, kode, nama, nim)
             status = "OK" if res.get("STATUS") == "OK" else "ERROR"
             file_hash = res.get("HASH", "")
 
-            # 4. Rename temp -> permanent secured file in data/uploads/
+            # 6. Workflow event — block committed
+            broadcast_workflow_event("block_committed", {
+                "step": "block_committed",
+                "hash": file_hash,
+                "message": f"Block #{res.get('INDEX', '?')} disimpan di ledger"
+            })
+
+            # 7. Rename temp -> permanent secured file in data/uploads/
             secured_path = temp_secured
             if file_hash:
                 secured_fn = f"{file_hash}_secured.pdf"

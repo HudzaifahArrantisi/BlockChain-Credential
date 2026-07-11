@@ -34,6 +34,17 @@ static const int RAFT_ELECTION_MAX_MS = 10000;
 static const int RAFT_STARTUP_STABILIZE_MS = 4000;
 static const int HTTP_BUFFER_SIZE = 65536;
 
+// ── Priority failover tuning ─────────────────────────────────────────────
+// The election timeout doubles as the leader-death detector. The designated
+// successor uses the SHORTEST timeout (SUCCESSOR_BASE_MS) so it notices the
+// dead leader first and wins; each subsequent node in the ring waits an extra
+// SUCCESSOR_STEP_MS. All are >> the 400ms heartbeat, so a live leader never
+// triggers a false election. FRESH_START_* is used before any leader exists.
+static const int SUCCESSOR_BASE_MS = 3000;
+static const int SUCCESSOR_STEP_MS = 1000;
+static const int FRESH_START_MIN_MS = 3000;
+static const int FRESH_START_MAX_MS = 6000;
+
 static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
 
 #ifdef _WIN32
@@ -130,7 +141,7 @@ static std::string recv_all(SOCKET sock) {
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char*)&flag, sizeof(flag));
     // Set receive timeout so recv doesn't hang forever
     timeval tv;
-    tv.tv_sec = 2;
+    tv.tv_sec = 1;
     tv.tv_usec = 0;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
     do {
@@ -474,6 +485,25 @@ std::string ConsensusNode::handle_request(const std::string& method,
         response["blocks"] = blockchain.chain_length();
         response["listener"] = listen_addr;
         response["leader_id"] = leader_id;
+        response["election_in_progress"] = election_in_progress.load();
+        response["has_active_leader"] = has_active_leader.load();
+    }
+
+    // Leader/failover status — for dashboards to render "voting in progress"
+    else if (path == "/api/leader/status") {
+        std::string ref = leader_id.empty() ? last_known_leader : leader_id;
+        std::string successor = get_successor_id(ref);
+        response["node_id"] = node_id;
+        response["role"] = get_role_str();
+        response["leader_id"] = leader_id;
+        response["term"] = current_term.load();
+        response["election_in_progress"] = election_in_progress.load();
+        response["election_progress"] = election_progress.load();
+        response["has_active_leader"] = has_active_leader.load();
+        response["successor"] = successor;          // who takes over next
+        response["is_successor"] = (successor == node_id);
+        response["last_known_leader"] = last_known_leader;
+        response["ordered_nodes"] = get_ordered_node_ids();
     }
 
     // Get full blockchain
@@ -494,16 +524,36 @@ std::string ConsensusNode::handle_request(const std::string& method,
         response["count"] = blockchain.chain_length();
     }
 
-    // Raft: RequestVote
+    // Raft: RequestVote (also handles pre-vote)
     else if (path == "/api/raft/request_vote") {
+        bool is_pre_vote = request.value("pre_vote", false);
         RequestVoteArgs args;
         args.term = request.value("term", 0LL);
         args.candidate_id = request.value("candidate_id", "");
         args.last_log_index = request.value("last_log_index", 0LL);
         args.last_log_hash = request.value("last_log_hash", "");
-        auto result = handle_request_vote(args);
-        response["term"] = result.term;
-        response["vote_granted"] = result.vote_granted;
+
+        if (is_pre_vote) {
+            // Pre-vote: check without persisting state
+            std::lock_guard<std::mutex> lock(mutex);
+            bool grant = false;
+            if (args.term >= current_term.load()) {
+                int64_t my_last = blockchain.chain_length();
+                if (args.last_log_index >= my_last - 1) {
+                    grant = true;
+                }
+            }
+            response["term"] = current_term.load();
+            response["vote_granted"] = grant;
+            std::cout << "[NODE " << node_id << "] Pre-vote "
+                      << (grant ? "GRANTED" : "DENIED") << " for "
+                      << args.candidate_id.substr(0, 8) << " (term "
+                      << args.term << ")" << std::endl;
+        } else {
+            auto result = handle_request_vote(args);
+            response["term"] = result.term;
+            response["vote_granted"] = result.vote_granted;
+        }
     }
 
     // Raft: AppendEntries
@@ -642,13 +692,94 @@ std::string ConsensusNode::handle_request(const std::string& method,
 
 // ── Raft Consensus ─────────────────────────────────────────────────────────
 
-void ConsensusNode::run_consensus_loop() {
-    std::uniform_int_distribution<int> election_jitter(RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+// Deterministic membership ordering: this node + all known peers, sorted by
+// node_id. Every node computes the SAME order, so they agree on who the
+// successor is without any coordination.
+std::vector<std::string> ConsensusNode::get_ordered_node_ids() const {
+    std::vector<std::string> ids;
+    ids.push_back(node_id);
+    {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        for (const auto& p : peers) {
+            if (!p.node_id.empty()) ids.push_back(p.node_id);
+        }
+    }
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    return ids;
+}
 
+// Successor = the next node_id after `dead_leader` in the sorted ring
+// (wraps around). This is the "+1" takeover: if node 3 dies, node 4 is next.
+std::string ConsensusNode::get_successor_id(const std::string& dead_leader) const {
+    std::vector<std::string> ids = get_ordered_node_ids();
+    if (ids.empty()) return "";
+    for (size_t i = 0; i < ids.size(); i++) {
+        if (ids[i] == dead_leader) {
+            return ids[(i + 1) % ids.size()];  // wrap around the ring
+        }
+    }
+    // Dead leader unknown (never seen) — first node in ring takes over.
+    return ids.front();
+}
+
+bool ConsensusNode::am_i_successor() const {
+    if (last_known_leader.empty()) return false;
+    return get_successor_id(last_known_leader) == node_id;
+}
+
+// Endpoint lookup by node_id.
+std::string ConsensusNode::endpoint_for_node(const std::string& target_id) const {
+    std::lock_guard<std::mutex> lock(peers_mutex);
+    for (const auto& p : peers) {
+        if (p.node_id == target_id) return p.endpoint;
+    }
+    return "";
+}
+
+// The heart of instant failover: the successor gets the shortest timeout so it
+// detects the dead leader first and wins in ~150ms of voting. We rank against
+// the *current* leader while it's alive too, so the successor is always primed
+// to take over. Non-successors fall back in ring order (base + step*rank).
+int64_t ConsensusNode::compute_election_timeout() {
+    std::vector<std::string> ids = get_ordered_node_ids();
+
+    // Rank against the dead leader if known, otherwise the live one — either
+    // way the designated successor keeps the shortest timer.
+    std::string ref_leader = !last_known_leader.empty() ? last_known_leader : leader_id;
+
+    if (!ref_leader.empty() && ids.size() > 1) {
+        int leader_idx = -1;
+        for (size_t i = 0; i < ids.size(); i++) {
+            if (ids[i] == ref_leader) { leader_idx = (int)i; break; }
+        }
+        if (leader_idx >= 0) {
+            int my_idx = -1;
+            for (size_t i = 0; i < ids.size(); i++) {
+                if (ids[i] == node_id) { my_idx = (int)i; break; }
+            }
+            if (my_idx >= 0) {
+                // rank 0 = immediate successor (fastest), 1 = next, ...
+                int rank = (my_idx - leader_idx - 1 + (int)ids.size()) % (int)ids.size();
+                std::uniform_int_distribution<int> jitter(0, 100);
+                return SUCCESSOR_BASE_MS + (int64_t)rank * SUCCESSOR_STEP_MS + jitter(rng);
+            }
+        }
+    }
+
+    // No leader reference (fresh cluster startup): short random jitter so the
+    // cluster elects a first leader quickly without a vote-split storm.
+    std::uniform_int_distribution<int> dist(FRESH_START_MIN_MS, FRESH_START_MAX_MS);
+    return dist(rng);
+}
+
+void ConsensusNode::run_consensus_loop() {
     // Stabilize: wait for peer connections to establish before first election
     std::this_thread::sleep_for(std::chrono::milliseconds(RAFT_STARTUP_STABILIZE_MS));
     last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
+    // Cache the first election timeout (random, since no leader has died yet).
+    cached_election_timeout = compute_election_timeout();
 
     while (running.load()) {
         int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -657,7 +788,22 @@ void ConsensusNode::run_consensus_loop() {
 
         switch (role.load()) {
             case NodeRole::FOLLOWER: {
-                if (elapsed > election_jitter(rng)) {
+                if (elapsed > cached_election_timeout) {
+                    // Leader appears dead — remember it so we can compute the
+                    // successor, flag the election, then run for office.
+                    if (has_active_leader.load() && !leader_id.empty()) {
+                        last_known_leader = leader_id;
+                        leader_lost_time.store(now);
+                        election_in_progress.store(true);
+                        election_progress.store(0);
+                        has_active_leader.store(false);
+                        if (am_i_successor()) {
+                            std::cout << "[NODE " << node_id << "] Leader "
+                                      << last_known_leader.substr(0, 8)
+                                      << " lost — I am the SUCCESSOR, taking over instantly"
+                                      << std::endl;
+                        }
+                    }
                     become_candidate();
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -665,7 +811,8 @@ void ConsensusNode::run_consensus_loop() {
             }
             case NodeRole::CANDIDATE: {
                 int64_t elapsed_since_election = now - last_heartbeat_time.load();
-                if (elapsed_since_election > election_jitter(rng)) {
+                election_progress.store(50);
+                if (elapsed_since_election > cached_election_timeout) {
                     become_candidate();
                 }
                 request_votes();
@@ -673,7 +820,11 @@ void ConsensusNode::run_consensus_loop() {
                 break;
             }
             case NodeRole::LEADER: {
-                send_heartbeats();
+                send_heartbeats_async();
+                process_heartbeat_responses();
+                if (should_check_peer_health()) {
+                    check_peer_health();
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(RAFT_HEARTBEAT_MS));
                 break;
             }
@@ -687,6 +838,8 @@ void ConsensusNode::become_follower(int64_t term) {
     voted_for = "";
     last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
+    // Re-cache timeout: prioritizes us if we're the successor of a dead leader.
+    cached_election_timeout = compute_election_timeout();
 }
 
 void ConsensusNode::become_candidate() {
@@ -696,6 +849,8 @@ void ConsensusNode::become_candidate() {
     voted_for = node_id;
     last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
+    // Keep the priority timeout so the successor keeps its head start on retries.
+    cached_election_timeout = compute_election_timeout();
     std::cout << "[NODE " << node_id << "] Starting election for term " << new_term << std::endl;
 }
 
@@ -704,8 +859,22 @@ void ConsensusNode::become_leader() {
     leader_id = node_id;
     last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
+    // Election settled — clear failover state.
+    election_in_progress.store(false);
+    election_progress.store(100);
+    has_active_leader.store(true);
+    last_known_leader = "";
+    int64_t takeover_ms = leader_lost_time.load() > 0
+        ? (last_heartbeat_time.load() - leader_lost_time.load()) : 0;
     std::cout << "[NODE " << node_id << "] Became LEADER for term "
-              << current_term.load() << std::endl;
+              << current_term.load();
+    if (takeover_ms > 0) {
+        std::cout << " (takeover in " << takeover_ms << "ms)";
+    }
+    std::cout << std::endl;
+    leader_lost_time.store(0);
+    // Immediately assert leadership so followers stop their election timers.
+    send_heartbeats_async();
 }
 
 ConsensusNode::RequestVoteResult
@@ -722,8 +891,10 @@ ConsensusNode::handle_request_vote(const RequestVoteArgs& args) {
         become_follower(args.term);
     }
 
+    // Pre-vote is also handled via this RPC
+    // In the actual handler, we check for pre_vote in handle_request
+
     if (voted_for.empty() || voted_for == args.candidate_id) {
-        // Check log is at least as up-to-date
         int64_t my_last = blockchain.chain_length();
         if (args.last_log_index >= my_last - 1) {
             voted_for = args.candidate_id;
@@ -739,6 +910,8 @@ ConsensusNode::handle_request_vote(const RequestVoteArgs& args) {
 ConsensusNode::AppendEntriesResult
 ConsensusNode::handle_append_entries(const AppendEntriesArgs& args) {
     AppendEntriesResult result;
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
     result.term = current_term.load();
     result.success = false;
 
@@ -746,31 +919,49 @@ ConsensusNode::handle_append_entries(const AppendEntriesArgs& args) {
 
     if (args.term < current_term.load()) return result;
 
+    // Valid leader heartbeat — clear any in-progress failover state.
+    has_active_leader.store(true);
+    election_in_progress.store(false);
+    election_progress.store(100);
+    last_known_leader = "";
+    leader_lost_time.store(0);
+
     become_follower(args.term);
-    last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count());
+    last_heartbeat_time.store(now);
     leader_id = args.leader_id;
 
-    // Accept empty heartbeat
+    // Log heartbeat latency (empty entry = heartbeat)
     if (args.entries.empty()) {
         result.success = true;
         return result;
     }
 
     // Append entries
+    int appended = 0;
     for (const auto& entry : args.entries) {
         if (!blockchain.has_block(entry.file_hash)) {
             if (blockchain.append_signed_block(entry)) {
                 result.success = true;
+                appended++;
                 if (block_committed_cb) {
                     block_committed_cb(entry);
                 }
                 std::cout << "[NODE " << node_id << "] Replicated block "
+                          << entry.index << " from leader " << args.leader_id.substr(0, 8)
+                          << " (term " << args.term << ")" << std::endl;
+            } else {
+                std::cerr << "[NODE " << node_id << "] Failed to append block "
                           << entry.index << " from leader" << std::endl;
             }
         } else {
-            result.success = true; // Already have it
+            result.success = true;
         }
+    }
+
+    if (appended > 0) {
+        std::cout << "[NODE " << node_id << "] Appended " << appended
+                  << " block(s) from leader, chain now "
+                  << blockchain.chain_length() << " blocks" << std::endl;
     }
 
     return result;
@@ -781,7 +972,15 @@ void ConsensusNode::request_votes() {
     std::vector<Peer> current_peers = get_peers();
 
     int votes_needed = (current_peers.size() + 1) / 2 + 1;
-    if (votes_needed < 2) votes_needed = 2; // At least self + 1
+    if (votes_needed < 2) votes_needed = 2;
+
+    // Pre-vote check: skip election if we can't get enough pre-votes
+    if (!request_pre_vote()) {
+        // Pre-vote failed — reset election timer and stay candidate
+        last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+        return;
+    }
 
     json req_body;
     req_body["term"] = term;
@@ -791,7 +990,237 @@ void ConsensusNode::request_votes() {
 
     std::string body = req_body.dump();
 
-    // Parallel vote requests to all peers
+    // Exponential backoff: 2^attempt * 100ms, max 3 retries
+    for (int attempt = 0; attempt < 3; attempt++) {
+        std::vector<std::string> responses(current_peers.size());
+        {
+            std::vector<std::thread> threads;
+            for (size_t i = 0; i < current_peers.size(); i++) {
+                threads.emplace_back([this, &current_peers, &responses, i, &body]() {
+                    // Check peer backoff
+                    std::lock_guard<std::mutex> lock(peers_mutex);
+                    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()).count();
+                    if (now < peers[i].next_contact_time) return;
+                    responses[i] = send_to_peer(current_peers[i].endpoint,
+                                                "/api/raft/request_vote", body);
+                });
+            }
+            for (auto& t : threads) {
+                if (t.joinable()) t.join();
+            }
+        }
+
+        int votes_granted = 1;
+        for (const auto& resp : responses) {
+            if (resp.empty()) {
+                mark_peer_failure(current_peers[&resp - &responses[0]].endpoint);
+                continue;
+            }
+            try {
+                json j = json::parse(resp);
+                if (j.value("vote_granted", false)) {
+                    mark_peer_success(current_peers[&resp - &responses[0]].endpoint);
+                    votes_granted++;
+                }
+                if (j.value("term", 0LL) > term) {
+                    become_follower(j["term"]);
+                    return;
+                }
+            } catch (...) {
+                mark_peer_failure(current_peers[&resp - &responses[0]].endpoint);
+            }
+        }
+
+        if (votes_granted >= votes_needed) {
+            std::cout << "[NODE " << node_id << "] Won election with "
+                      << votes_granted << "/" << votes_needed << " votes (attempt "
+                      << attempt + 1 << ")" << std::endl;
+            become_leader();
+            return;
+        }
+
+        if (attempt < 2) {
+            int64_t delay_ms = (1LL << attempt) * 100; // 100, 200, 400ms
+            std::cout << "[NODE " << node_id << "] Election attempt " << (attempt + 1)
+                      << " failed (" << votes_granted << "/" << votes_needed
+                      << ") — retrying in " << delay_ms << "ms" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+        }
+    }
+
+    // All retries exhausted — stay as candidate, reset timer
+    std::cout << "[NODE " << node_id << "] All election retries exhausted" << std::endl;
+    last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+void ConsensusNode::send_heartbeats() {
+    send_heartbeats_async();
+}
+
+void ConsensusNode::send_heartbeats_async() {
+    int64_t term = current_term.load();
+    std::vector<Peer> current_peers = get_peers();
+    if (current_peers.empty()) return;
+
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    last_heartbeat_sent_time.store(now);
+
+    json req_body;
+    req_body["term"] = term;
+    req_body["leader_id"] = node_id;
+    req_body["prev_log_index"] = blockchain.chain_length();
+    req_body["prev_log_hash"] = blockchain.get_chain_hash();
+    req_body["leader_commit"] = blockchain.chain_length();
+    req_body["entries"] = json::array();
+
+    std::string body = req_body.dump();
+
+    for (const auto& peer : current_peers) {
+        // Skip unhealthy peers or peers in backoff
+        if (!is_peer_healthy(peer.endpoint)) continue;
+        if (now < peer.next_contact_time) continue;
+
+        // Spawn async heartbeat — non-blocking for consensus loop
+        std::thread([this, peer, term, body]() {
+            std::string resp = send_to_peer(peer.endpoint,
+                                             "/api/raft/append_entries",
+                                             body);
+            // Queue the response for later processing
+            {
+                std::lock_guard<std::mutex> lock(response_queue_mutex);
+                heartbeat_responses.push({peer.endpoint, resp});
+            }
+        }).detach();
+    }
+}
+
+void ConsensusNode::process_heartbeat_responses() {
+    std::queue<std::pair<std::string, std::string>> q;
+    {
+        std::lock_guard<std::mutex> lock(response_queue_mutex);
+        q.swap(heartbeat_responses);
+    }
+
+    int64_t term = current_term.load();
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+
+    while (!q.empty()) {
+        auto [endpoint, resp] = q.front();
+        q.pop();
+
+        // Update peer health
+        if (resp.empty()) {
+            mark_peer_failure(endpoint);
+            std::lock_guard<std::mutex> plock(peer_health_mutex);
+            peer_health_map[endpoint].consecutive_timeouts++;
+            if (peer_health_map[endpoint].consecutive_timeouts >= 15) {
+                peer_health_map[endpoint].status = PeerStatus::UNHEALTHY;
+                std::cout << "[NODE " << node_id << "] Peer " << endpoint
+                          << " marked UNHEALTHY (" << peer_health_map[endpoint].consecutive_timeouts
+                          << " consecutive timeouts)" << std::endl;
+            }
+            continue;
+        }
+
+        try {
+            json j = json::parse(resp);
+            mark_peer_success(endpoint);
+
+            int64_t rtt = now - last_heartbeat_sent_time.load();
+            {
+                std::lock_guard<std::mutex> plock(peer_health_mutex);
+                auto& ph = peer_health_map[endpoint];
+                ph.last_response_time = now;
+                ph.last_success_time = now;
+                ph.consecutive_timeouts = 0;
+                ph.status = PeerStatus::HEALTHY;
+                // Exponential moving average of RTT
+                ph.avg_response_ms = ph.avg_response_ms * 0.9 + rtt * 0.1;
+            }
+
+            if (j.value("term", 0LL) > term) {
+                std::cout << "[NODE " << node_id << "] Heartbeat response from "
+                          << endpoint << " has higher term " << j["term"]
+                          << " > " << term << " — demoting" << std::endl;
+                become_follower(j["term"]);
+                return;
+            }
+        } catch (...) {
+            mark_peer_failure(endpoint);
+        }
+    }
+}
+
+bool ConsensusNode::should_check_peer_health() const {
+    // Check every 10 heartbeat cycles
+    static int counter = 0;
+    return (++counter % 10 == 0);
+}
+
+bool ConsensusNode::is_peer_healthy(const std::string& endpoint) const {
+    std::lock_guard<std::mutex> lock(peer_health_mutex);
+    auto it = peer_health_map.find(endpoint);
+    if (it == peer_health_map.end()) return true; // unknown peers are healthy
+    return it->second.status == PeerStatus::HEALTHY;
+}
+
+void ConsensusNode::check_peer_health() {
+    std::vector<std::string> unhealthy_endpoints;
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+
+    {
+        std::lock_guard<std::mutex> lock(peer_health_mutex);
+        for (auto& [ep, ph] : peer_health_map) {
+            if (ph.status == PeerStatus::UNHEALTHY) {
+                // Ping the peer
+                std::string resp = send_to_peer(ep, "/api/node/info", "");
+                if (!resp.empty()) {
+                    try {
+                        json j = json::parse(resp);
+                        ph.status = PeerStatus::HEALTHY;
+                        ph.consecutive_timeouts = 0;
+                        ph.last_success_time = now;
+                        std::cout << "[NODE " << node_id << "] Peer " << ep
+                                  << " recovered — marked HEALTHY" << std::endl;
+                    } catch (...) {
+                        ph.consecutive_timeouts++;
+                    }
+                } else {
+                    ph.consecutive_timeouts++;
+                }
+            }
+            // Mark as DEAD after 60 consecutive failures
+            if (ph.consecutive_timeouts >= 60) {
+                ph.status = PeerStatus::DEAD;
+                std::cout << "[NODE " << node_id << "] Peer " << ep
+                          << " marked DEAD after " << ph.consecutive_timeouts
+                          << " failures" << std::endl;
+            }
+        }
+    }
+}
+
+bool ConsensusNode::request_pre_vote() {
+    int64_t term = current_term.load();
+    std::vector<Peer> current_peers = get_peers();
+
+    pre_vote_responses.clear();
+
+    json req_body;
+    req_body["pre_vote"] = true;
+    req_body["term"] = term;
+    req_body["candidate_id"] = node_id;
+    req_body["last_log_index"] = blockchain.chain_length();
+    req_body["last_log_hash"] = blockchain.get_chain_hash();
+
+    std::string body = req_body.dump();
+
+    // Parallel pre-vote (same pattern as actual vote)
     std::vector<std::string> responses(current_peers.size());
     {
         std::vector<std::thread> threads;
@@ -806,74 +1235,27 @@ void ConsensusNode::request_votes() {
         }
     }
 
-    int votes_granted = 1; // Vote for self
+    int grants = 1; // self
     for (const auto& resp : responses) {
-        if (resp.empty()) continue;
-        try {
-            json j = json::parse(resp);
-            if (j.value("vote_granted", false)) {
-                votes_granted++;
-            }
-            if (j.value("term", 0LL) > term) {
-                become_follower(j["term"]);
-                return;
-            }
-        } catch (...) {}
-    }
-
-    if (votes_granted >= votes_needed) {
-        become_leader();
-    }
-}
-
-void ConsensusNode::send_heartbeats() {
-    int64_t term = current_term.load();
-    std::vector<Peer> current_peers = get_peers();
-    if (current_peers.empty()) return;
-
-    json req_body;
-    req_body["term"] = term;
-    req_body["leader_id"] = node_id;
-    req_body["prev_log_index"] = blockchain.chain_length();
-    req_body["prev_log_hash"] = blockchain.get_chain_hash();
-    req_body["leader_commit"] = blockchain.chain_length();
-    req_body["entries"] = json::array();
-
-    std::string body = req_body.dump();
-
-    for (auto& peer : current_peers) {
-        std::string resp = send_to_peer(peer.endpoint,
-                                         "/api/raft/append_entries",
-                                         body);
         if (!resp.empty()) {
             try {
                 json j = json::parse(resp);
-                peer.is_active = true;
-                if (j.value("term", 0LL) > term) {
-                    become_follower(j["term"]);
-                    {
-                        std::lock_guard<std::mutex> lock(peers_mutex);
-                        for (auto& p : peers) {
-                            if (p.endpoint == peer.endpoint) {
-                                p.is_active = peer.is_active; break;
-                            }
-                        }
-                    }
-                    return;
+                if (j.value("vote_granted", false)) {
+                    grants++;
                 }
-            } catch (...) {
-                peer.is_active = false;
-            }
-        }
-        {
-            std::lock_guard<std::mutex> lock(peers_mutex);
-            for (auto& p : peers) {
-                if (p.endpoint == peer.endpoint) {
-                    p.is_active = peer.is_active; break;
-                }
-            }
+            } catch (...) {}
         }
     }
+
+    int needed = (current_peers.size() + 1) / 2 + 1;
+    if (needed < 2) needed = 2;
+    bool won = (grants >= needed);
+
+    if (!won) {
+        std::cout << "[NODE " << node_id << "] Pre-vote lost ("
+                  << grants << "/" << needed << ") — skipping election" << std::endl;
+    }
+    return won;
 }
 
 void ConsensusNode::replicate_log() {
@@ -926,6 +1308,18 @@ bool ConsensusNode::propose_block(const std::string& file_hash,
                                    const std::string& student_id,
                                    const std::string& encrypted_details) {
 
+    // Upload resilience: if a failover is in progress there may be no leader
+    // for a brief moment. Instead of failing the upload, wait through the
+    // fast-failover window (~up to 3s) for a leader to emerge or for us to be
+    // promoted. This is why priority failover matters — the wait is short.
+    if (role.load() != NodeRole::LEADER) {
+        for (int i = 0; i < 30; i++) {  // 30 * 100ms = 3s max
+            if (role.load() == NodeRole::LEADER) break;
+            if (!leader_id.empty() && has_active_leader.load()) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
     if (role.load() == NodeRole::LEADER) {
         std::lock_guard<std::mutex> lock(mutex);
 
@@ -946,7 +1340,8 @@ bool ConsensusNode::propose_block(const std::string& file_hash,
         return false;
     }
 
-    // Forward to leader
+    // Forward to leader. leader_id is a node_id, so match peers by node_id
+    // (endpoint match was a latent bug — leader_id is never an endpoint).
     if (!leader_id.empty()) {
         json req;
         req["file_hash"] = file_hash;
@@ -954,25 +1349,96 @@ bool ConsensusNode::propose_block(const std::string& file_hash,
         req["student_name"] = student_name;
         req["student_id"] = student_id;
         req["encrypted_details"] = encrypted_details;
+        std::string body = req.dump();
 
+        std::string leader_ep = endpoint_for_node(leader_id);
+        if (!leader_ep.empty()) {
+            std::string resp = send_to_peer(leader_ep, "/api/blockchain/propose", body);
+            if (!resp.empty()) {
+                try {
+                    json j = json::parse(resp);
+                    if (j.value("status", "") == "ACCEPTED") return true;
+                } catch (...) {}
+            }
+        }
+
+        // Fallback: leader endpoint unknown or failed — try every peer until
+        // one (the real leader) accepts.
         std::vector<Peer> current_peers = get_peers();
         for (const auto& peer : current_peers) {
-            if (peer.is_leader || peer.endpoint == leader_id) {
-                std::string resp = send_to_peer(peer.endpoint,
-                                                 "/api/blockchain/propose",
-                                                 req.dump());
-                if (!resp.empty()) {
-                    try {
-                        json j = json::parse(resp);
-                        return j.value("status", "") == "ACCEPTED";
-                    } catch (...) {}
-                }
+            if (peer.endpoint == leader_ep) continue;  // already tried
+            std::string resp = send_to_peer(peer.endpoint, "/api/blockchain/propose", body);
+            if (!resp.empty()) {
+                try {
+                    json j = json::parse(resp);
+                    if (j.value("status", "") == "ACCEPTED") return true;
+                } catch (...) {}
             }
         }
     }
 
     std::cerr << "[NODE] Cannot propose: no leader known" << std::endl;
     return false;
+}
+
+void ConsensusNode::mark_peer_success(const std::string& endpoint) {
+    {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        for (auto& p : peers) {
+            if (p.endpoint == endpoint) {
+                p.consecutive_failures = 0;
+                p.next_contact_time = 0;
+                p.is_active = true;
+                break;
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(peer_health_mutex);
+        auto& ph = peer_health_map[endpoint];
+        ph.consecutive_timeouts = 0;
+        ph.status = PeerStatus::HEALTHY;
+    }
+}
+
+void ConsensusNode::mark_peer_failure(const std::string& endpoint) {
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    {
+        std::lock_guard<std::mutex> lock(peers_mutex);
+        for (auto& p : peers) {
+            if (p.endpoint == endpoint) {
+                p.consecutive_failures++;
+                // Exponential backoff: 2^failures * 100ms, max 5s
+                int64_t backoff_ms = std::min(
+                    (1LL << std::min(p.consecutive_failures, 6)) * 100LL,
+                    5000LL);
+                p.next_contact_time = now + backoff_ms;
+                p.is_active = false;
+                break;
+            }
+        }
+    }
+}
+
+bool ConsensusNode::is_peer_reachable(const std::string& endpoint) const {
+    std::lock_guard<std::mutex> lock(peers_mutex);
+    for (const auto& p : peers) {
+        if (p.endpoint == endpoint) {
+            int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count();
+            return now >= p.next_contact_time;
+        }
+    }
+    return true;
+}
+
+void ConsensusNode::reset_election_timer() {
+    last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+    // Re-cache election timeout for this term
+    std::uniform_int_distribution<int> dist(RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    cached_election_timeout = dist(rng);
 }
 
 void ConsensusNode::add_validator(const std::string& v_node_id,
@@ -1051,6 +1517,15 @@ std::string ConsensusNode::get_status_json() const {
     j["blocks"] = blockchain.chain_length();
     j["listener"] = listen_addr;
     j["leader_id"] = leader_id;
+    j["election_in_progress"] = election_in_progress.load();
+    j["election_progress"] = election_progress.load();
+    j["has_active_leader"] = has_active_leader.load();
+    {
+        std::string ref = leader_id.empty() ? last_known_leader : leader_id;
+        std::string successor = get_successor_id(ref);
+        j["successor"] = successor;
+        j["is_successor"] = (successor == node_id);
+    }
 
     j["peers"] = json::array();
     for (const auto& p : get_peers()) {

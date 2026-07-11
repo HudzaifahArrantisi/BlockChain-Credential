@@ -14,21 +14,21 @@ New-Item -ItemType Directory -Path "$ROOT\data" -Force | Out-Null
 Write-Host "  ✅ Semua node dimatikan, /data dibersihkan" -ForegroundColor Green
 Start-Sleep -Seconds 1
 
-$PORTS = @(8545, 8546, 8547, 8548, 8549, 8550, 8551, 8552, 8553, 8554)
-$LABELS = @{8545="Node 1"; 8546="Node 2"; 8547="Node 3"; 8548="Node 4"; 8549="Node 5";
-            8550="Node 6"; 8551="Node 7"; 8552="Node 8"; 8553="Node 9"; 8554="Node 10"}
+$PORTS = 8545..(8545 + 200)
+$LABELS = @{}
+foreach ($p in $PORTS) { $LABELS[$p] = "Node $($p - 8544)" }
 
 # ── Tanya jumlah node ────────────────────────────────────────────────
-if ($Count -lt 1 -or $Count -gt 10) {
+if ($Count -lt 1) {
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║     START NODES - Blockchain Cluster     ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Available ports: 8545-8554" -ForegroundColor Gray
+    Write-Host "Port range: 8545–$($PORTS[-1])" -ForegroundColor Gray
     Write-Host ""
     do {
-        $input = Read-Host "  Mau jalankan berapa node? (1-10)"
-    } while ($input -notmatch '^\d+$' -or [int]$input -lt 1 -or [int]$input -gt 10)
+        $input = Read-Host "  Mau jalankan berapa node? (min 1)"
+    } while ($input -notmatch '^\d+$' -or [int]$input -lt 1)
     $Count = [int]$input
 }
 
