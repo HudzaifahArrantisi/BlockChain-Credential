@@ -54,7 +54,7 @@ def _make_stamp(width: float, height: float, code: str, name: str) -> PdfReader:
 
     c.setFillColor(Color(0.85, 0.05, 0.05, alpha=0.98))
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(12, 52, "SECURECHAIN VERIFIED")
+    c.drawString(12, 52, "FFILE ASLI")
     c.setFont("Helvetica", 8)
     c.drawString(12, 38, "Kode Unik:")
     c.setFont("Helvetica-Bold", 9)
@@ -71,7 +71,7 @@ def _make_stamp(width: float, height: float, code: str, name: str) -> PdfReader:
     c.rotate(45)
     c.setFont("Helvetica-Bold", 46)
     c.setFillColor(Color(0.85, 0.05, 0.05, alpha=0.07))
-    c.drawCentredString(0, 0, "SECURECHAIN")
+    c.drawCentredString(0, 0, "SECURECHAIN ")
     c.restoreState()
 
     c.save()

@@ -1,30 +1,23 @@
 /**
  * NetworkGraph.js
  * Main graph component — ties vis-network, adapter, and SSE events together.
- *
- * Dependencies:
- *   - vis-network (global `vis`)
- *   - GraphAdapter (global)
- *   - UseVisNetwork (global)
- *
- * All existing features (header pills, renderChain, renderLogs, upload, resize) remain untouched.
- *
- * NOTE: Physics is disabled. Nodes have fixed positions from GraphAdapter.
- * No force-directed movement, no animation restarts — only visual state updates.
+ * ForceAtlas2Based physics for organic node placement, then gentle damping.
  */
 const NetworkGraph = (() => {
 
   // ── Internal state ──────────────────────────────────────────────
-  let _network = null;       // vis.Network instance
-  let _nodeSet = null;       // vis.DataSet for nodes
-  let _edgeSet = null;       // vis.DataSet for edges
-  let _container = null;     // DOM container
+  let _network = null;
+  let _nodeSet = null;
+  let _edgeSet = null;
+  let _container = null;
+  let _visContainer = null;
   let _prevAliveCount = 0;
   let _particles = [];
   let _particleId = 0;
   let _particleAnimId = null;
-  let _pulsePhase = 0;       // leader glow pulse phase
-  let _savedPositions = {};  // port -> {x, y} — persists user drag across SSE updates
+  let _pulsePhase = 0;
+  let _savedPositions = {};
+  let _stabilized = false;
 
   // ── Config ──────────────────────────────────────────────────────
   const PARTICLE_SPEED = 0.008;
@@ -210,21 +203,35 @@ const NetworkGraph = (() => {
     _container.style.height = '100%';
     _container.style.position = 'relative';
 
-    const visContainer = document.createElement('div');
-    visContainer.style.width = '100%';
-    visContainer.style.height = '100%';
-    visContainer.style.position = 'absolute';
-    visContainer.style.top = '0';
-    visContainer.style.left = '0';
-    _container.appendChild(visContainer);
+    _visContainer = document.createElement('div');
+    _visContainer.style.width = '100%';
+    _visContainer.style.height = '100%';
+    _visContainer.style.position = 'absolute';
+    _visContainer.style.top = '0';
+    _visContainer.style.left = '0';
+    _container.appendChild(_visContainer);
 
+    // Create with physics-enabled layout (forceAtlas2Based) for organic feel
     const result = UseVisNetwork.create(
-      visContainer,
+      _visContainer,
       [],
       [],
       {
-        physics: { enabled: false },
-        interaction: { hover: true, tooltipDelay: 200 },
+        physics: {
+          enabled: true,
+          stabilization: { enabled: true, iterations: 250, fit: true },
+          solver: 'forceAtlas2Based',
+          forceAtlas2Based: {
+            gravitationalConstant: -48,
+            centralGravity: 0.006,
+            springLength: 200,
+            springConstant: 0.035,
+            damping: 0.55,
+            avoidOverlap: 0.4,
+          },
+          adaptiveTimestep: true,
+        },
+        interaction: { hover: true, tooltipDelay: 150 },
       }
     );
 
@@ -234,6 +241,21 @@ const NetworkGraph = (() => {
 
     _initParticleCanvas(_container);
     _applyEntryAnimation();
+
+    // ── Stabilization: save positions when physics settles ─────────
+    _network.once('stabilizationIterationsDone', () => {
+      _stabilized = true;
+      _saveAllPositions();
+      // Keep physics running but with high damping for minor adjustments
+      _network.setOptions({
+        physics: {
+          enabled: true,
+          forceAtlas2Based: { damping: 0.7 },
+          minVelocity: 0.5,
+          stabilization: { enabled: false },
+        },
+      });
+    });
 
     // ── Events ──────────────────────────────────────────────────
     _network.on('click', function (params) {
@@ -248,16 +270,13 @@ const NetworkGraph = (() => {
         const nodeId = params.nodes[0];
         UseVisNetwork.focusNode(_network, nodeId, 2);
       } else {
-        UseVisNetwork.fitView(_network, 400);
+        UseVisNetwork.fitView(_network, 500);
       }
     });
 
-    // Save user-dragged positions so they survive SSE updates
+    // Save positions after drag — they persist across SSE updates
     _network.on('dragEnd', function () {
-      const allPos = _network.getPositions(_nodeSet.getIds());
-      for (const [id, pos] of Object.entries(allPos)) {
-        if (pos) _savedPositions[id] = { x: pos.x, y: pos.y };
-      }
+      _saveAllPositions();
     });
 
     // Resize handler
@@ -268,7 +287,19 @@ const NetworkGraph = (() => {
 
     _ensureParticleLoop();
 
-    console.log('[NetworkGraph] Initialized with vis-network (static layout)');
+    console.log('[NetworkGraph] Initialized with ForceAtlas2 physics');
+  }
+
+  function _saveAllPositions() {
+    if (!_network) return;
+    try {
+      const allIds = _nodeSet.getIds();
+      if (allIds.length === 0) return;
+      const allPos = _network.getPositions(allIds);
+      for (const [id, pos] of Object.entries(allPos)) {
+        if (pos) _savedPositions[id] = { x: pos.x, y: pos.y };
+      }
+    } catch (e) { /* skip */ }
   }
 
   /**
@@ -280,9 +311,8 @@ const NetworkGraph = (() => {
     if (!_network) return;
     const { nodes } = data;
     const alive = nodes.filter(n => n.alive);
-    const offline = nodes.length - alive.length;
 
-    // ── Update header pills ──────────────────────────────────────
+    // ── Show/hide waiting overlay ────────────────────────────────
     if (alive.length > _prevAliveCount) {
       const overlay = document.getElementById('waiting-overlay');
       if (overlay) overlay.style.display = 'none';
@@ -291,52 +321,34 @@ const NetworkGraph = (() => {
 
     const visEl = document.getElementById('vis');
     if (visEl) {
+      visEl.style.display = alive.length ? 'block' : 'none';
       if (!alive.length) {
-        visEl.style.display = 'none';
         const overlay = document.getElementById('waiting-overlay');
         if (overlay) overlay.style.display = 'flex';
-      } else {
-        visEl.style.display = 'block';
       }
     }
 
-    const cL = alive.filter(n => n.role === 'LEADER').length;
-    const cF = alive.filter(n => n.role === 'FOLLOWER').length;
-    const cB = (data.blockchain.blocks || []).length;
-    const leaderLabel = document.querySelector('.leader-badge .pill-label');
-    const followerLabel = document.querySelector('.follower-badge .pill-label');
-    const offlineLabel = document.querySelector('.offline-badge .pill-label');
-    const blockNum = document.getElementById('block-num');
-    const activeNum = document.getElementById('active-num');
-    if (leaderLabel) leaderLabel.textContent = `${cL} LEADER`;
-    if (followerLabel) followerLabel.textContent = `${cF} FOLLOWER`;
-    if (offlineLabel) offlineLabel.textContent = `${offline} OFFLINE`;
-    if (blockNum) blockNum.textContent = `${cB} BLOCKS`;
-    if (activeNum) activeNum.textContent = alive.length;
-
-    // ── Update vis-network nodes/edges (visual state only) ──────
+    // ── Update vis-network nodes/edges ──────────────────────────
     const visNodes = GraphAdapter.toVisNodes(nodes);
+    const currentDsNodes = _nodeSet.get();
+    const existingIds = currentDsNodes.map(n => n.id);
 
-    // Preserve user-dragged positions — savedPositions is updated on dragEnd
-    // For new nodes never seen before, fall back to the DataSet, then to computed
-    const dsPositions = _nodeSet.get().reduce((m, n) => {
-      if (n.x != null) m[n.id] = { x: n.x, y: n.y };
-      return m;
-    }, {});
+    // Only fix positions for nodes that have already been placed.
+    // New nodes (first appearance) intentionally get NO x/y so physics
+    // settles them organically.
     for (const vn of visNodes) {
-      const pos = _savedPositions[vn.id] || dsPositions[vn.id];
-      if (pos) {
-        vn.x = pos.x;
-        vn.y = pos.y;
+      const saved = _savedPositions[vn.id];
+      if (saved) {
+        vn.x = saved.x;
+        vn.y = saved.y;
       }
+      // else: brand-new node — let physics place it
     }
 
     const visEdges = GraphAdapter.toAllEdges(nodes);
-
     UseVisNetwork.setNodes(_nodeSet, visNodes);
     UseVisNetwork.setEdges(_edgeSet, visEdges);
 
-    // Spawn particles on leader->follower edges
     _spawnParticles();
     _ensureParticleLoop();
   }
@@ -411,12 +423,18 @@ const NetworkGraph = (() => {
     }
   }
 
-  /**
-   * Force re-fit (no physics to restart).
-   */
   function refresh() {
     if (!_network) return;
-    UseVisNetwork.fitView(_network, 400);
+    _stabilized = false;
+    _savedPositions = {};
+    UseVisNetwork.stabilize(_network, 150);
+    setTimeout(() => {
+      if (_network) {
+        _saveAllPositions();
+        _stabilized = true;
+        UseVisNetwork.fitView(_network, 400);
+      }
+    }, 3000);
   }
 
   function spawnParticlesBurst(fromPort, toPorts, count) {

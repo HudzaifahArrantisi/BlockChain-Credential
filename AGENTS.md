@@ -10,6 +10,7 @@ GUI deps: `pypdf`, `reportlab`, `qrcode[pil]`, `Pillow`.
 bash build_gcc.sh          # static g++ build -> scdv_verifier.exe
 # or on Windows: double-click BUILD.bat
 python gui/app.py          # launch GUI (after: pip install --user pypdf reportlab qrcode[pil] Pillow)
+python gui/vis_server.py   # web dashboard at http://localhost:8080
 ```
 
 exe built **static** (`-static -static-libstdc++ -static-libgcc` + static OpenSSL `.a` libs) — REQUIRED because Git's MinGW `libstdc++-6.dll` on PATH is ABI-mismatched and segfaults dynamic linking. OpenSSL dev libs at `C:/ProgramData/mingw64/mingw64/opt`.
@@ -32,10 +33,10 @@ exe built **static** (`-static -static-libstdc++ -static-libgcc` + static OpenSS
 | `gui/pdf_secure.py` | Visible stamp (red badge + QR + watermark), HMAC-SHA256 metadata signature, AES-256 PDF password-lock |
 | `gui/scdv_core.py` | subprocess bridge GUI→exe, parses `KEY=VALUE` lines, runs exe with `cwd=ROOT` |
 | `gui/vis_server.py` | **Web dashboard server** (HTTP + SSE). Serves `gui/web/`, polls blockchain nodes, handles `/api/register` POST |
-| `gui/web/index.html` | Single-page dashboard: Register Diploma form + blockchain log + logs overlay |
-| `gui/web/utils/graphAdapter.js` | Converts SSE node data → vis-network node/edge format |
-| `gui/web/hooks/useVisNetwork.js` | vis-network lifecycle manager (physics, fit, destroy) |
-| `gui/web/components/NetworkGraph.js` | Main graph component — vis-network + particle overlay + state change detection |
+| `gui/web/index.html` | Single-page dashboard: Register Diploma form + topology graph + terminal logs + node status + blockchain feed |
+| `gui/web/utils/graphAdapter.js` | Converts SSE node data → vis-network node/edge format (physics, tooltips, dynamic sizing) |
+| `gui/web/hooks/useVisNetwork.js` | vis-network lifecycle manager (ForceAtlas2 physics, events, stabilization) |
+| `gui/web/components/NetworkGraph.js` | Main graph component — vis-network + particle overlay + state change detection + smart node placement |
 
 Headers in `include/` mirror C++ sources 1:1.
 
@@ -62,16 +63,65 @@ Headers in `include/` mirror C++ sources 1:1.
 
 ## What Was Done
 
-### 1. Raft Consensus Stability
-- Election timeout increased to 4000-10000ms to reduce leader flapping
-- VisServer polling hardened: quick discovery every 4s, node removal after 3 consecutive failures
-- Graph (vis-network): all cables connect from leader to every node (green alive, red dead)
+### 1. Raft Consensus Stability (Major Overhaul)
+Root cause: nodes died simultaneously during leader election due to:
+- Successor timeout gap too small (only 1000ms before other followers also start elections)
+- No `election_in_progress` guard — followers blindly started competing elections
+- Pre-vote didn't detect higher terms — caused wasted election cycles
+- VisServer removed nodes after only 3 missed polls (6s)
 
-### 2. Web Dashboard Consolidation
-- Converted from `dev.html`/`dev.js`/`dev.css`/`style.css` to single `gui/web/index.html` (all CSS/JS inline)
-- Fixed bug: `<header>` with pill badges was missing from HTML, causing `Cannot set properties of null (setting 'textContent')` — header re-added
-- Old dev files deleted
-- **Logs moved from sidebar to floating overlay** at top-left of topology panel with per-node tab filtering (bright green theme)
+**Fixes in `src/node.cpp`:**
+- `SUCCESSOR_STEP_MS`: 1000 → **3000** — successor has 3s head start before next follower times out
+- `FRESH_START_MAX_MS`: 6000 → **8000** — wider initial randomization
+- **`election_in_progress` guard** in FOLLOWER loop: if election already running and node is NOT successor, extend timeout by +5000ms instead of becoming candidate
+- **`handle_request_vote`** now resets follower's `last_heartbeat_time` + sets `election_in_progress=true` on receiving any vote request — prevents followers from starting competing elections
+- **Pre-vote** now checks peer response terms: if any peer has higher term, `become_follower()` immediately
+- After pre-vote failure, candidate **steps down to follower** instead of looping forever as candidate
+
+**Fixes in `gui/vis_server.py`:**
+- Fail threshold: 3 → **6** (12s before removal instead of 6s)
+- **Election-aware removal**: if ANY node reports `election_in_progress=true`, ALL nodes are kept — no removals during election
+- Removed nodes are re-inserted on next scan if they come back
+
+### 2. Web Dashboard — UI/UX Complete Redesign
+Replaced static layout with glass-morphism design, physics-based vis-network, and smooth animations throughout.
+
+**`gui/web/utils/graphAdapter.js`:**
+- Nodes now have `physics: true` with varying `mass` (leader=3, candidate=2, follower=1.5)
+- Leader uses `shape: 'star'` with glow shadow instead of circle
+- Rich HTML tooltips with role badge, grid layout of term/blocks/port/status
+- Dynamic sizing (leader 32, candidate 26, follower 24)
+- Removed fixed position computation — organic ForceAtlas2 placement
+
+**`gui/web/hooks/useVisNetwork.js`:**
+- Full ForceAtlas2Based physics config: `gravitationalConstant`, `springLength`, `damping`, `avoidOverlap`
+- BarnesHut fallback solver for distant nodes
+- 200-iteration stabilization with auto-fit
+- New API: `wireEvents()`, `startPhysics()`, `stopPhysics()`, `stabilize()`, `enableDrag()`, `disableDrag()`
+
+**`gui/web/components/NetworkGraph.js`:**
+- Init with physics enabled + 250 stabilization iterations
+- `stabilizationIterationsDone` callback saves positions, then keeps high damping (0.7) for minor adjustments
+- Smart node placement: existing nodes keep saved position, new nodes get no x/y — physics places them organically
+- `_saveAllPositions()` persists positions on stabilization and dragEnd
+- `refresh()` resets all positions and re-stabilizes
+- Removed duplicate header pill logic (now exclusively in `render()`)
+
+**`gui/web/index.html`:**
+- **Ambient background**: 3 animated radial glows that drift slowly (20s cycle)
+- **Glass morphism**: `backdrop-filter: blur()` on header, panel, controls, legend, terminal logs
+- **Header**: pill hover effects with gradient overlays, smooth `animateCount()` number transitions
+- **Workflow overlay**: ripple on active step dot, shimmer on completed step lines
+- **Leader toast**: scale + translateX enter/exit with cubic-bezier easing
+- **Waiting overlay**: animated signal bars (4 bars with staggered delay)
+- **Node cards**: staggered `cardIn` animation (i*40ms), hover lift + shadow, active scale
+- **Block cards**: staggered fade-in, translateX on hover, genesis/new block variants
+- **Form elements**: focus glow, hover border color change, file-zone hover background
+- **Buttons**: gradient overlay on hover, translateY lift, active scale feedback
+- **Confetti**: multi-color (green/blue/yellow/purple), mixed shapes (circle + square)
+- **Terminal logs**: dark background `rgba(0,0,0,.55)` with backdrop blur, border radius, box shadow, scrollbar hidden (scrollable via overflow), log line fade-in animation
+- **Resize handle**: thicker colored indicator on hover/active
+- **All cards**: eager DOM diffing (only re-render when HTML actually changes)
 
 ### 3. Web Register Diploma — Full Pipeline
 **File: `gui/vis_server.py`** — `handle_register()` rewritten to run full security pipeline:
@@ -91,32 +141,35 @@ Replaced raw D3.js force graph with **vis-network (v9.1.9)**:
 
 | Feature | Implementation |
 |---------|--------------|
-| Physics engine | `forceAtlas2Based` solver, auto-stabilization |
+| Physics engine | `forceAtlas2Based` solver, 250-iteration stabilization |
 | Node shapes | Leader = star (larger, glow), Follower = dot (blue), Candidate = orange, Offline = gray |
-| Edge curves | Smooth `curvedCW` with directional arrows |
+| Edge curves | Smooth `curvedCW` with directional arrows, dynamic roundness |
 | Edge colors | Green (heartbeat), Blue (replication), Yellow (vote) — randomized particles |
 | Flowing particles | Canvas overlay with animated dots on leader→follower edges |
-| Zoom/Pan/Drag | vis-network built-in + double-click focus |
-| Node tooltips | Role, Term, Blocks, ID, Status (vis-network native) |
+| Zoom/Pan/Drag | vis-network built-in + double-click focus, hover tooltips |
+| Node tooltips | Rich HTML: role badge, Term, Blocks, Port, Node ID, Status |
 | Grid dots | CSS radial-gradient background pattern |
-| State change detection | Leader election / node online-offline → physics re-enable + notification |
+| State change detection | Leader election / node online-offline → toast notification + visual update |
 
 | New file | Purpose |
 |----------|---------|
-| `gui/web/utils/graphAdapter.js` | `toVisNodes()`, `toAllEdges()` — pure data conversion |
-| `gui/web/hooks/useVisNetwork.js` | `create()`, `setNodes()`, `setEdges()`, physics control |
-| `gui/web/components/NetworkGraph.js` | `init()`, `update()`, `refresh()`, `fit()`, particle overlay |
+| `gui/web/utils/graphAdapter.js` | `toVisNodes()`, `toAllEdges()` — data conversion with physics, tooltips, dynamic sizing |
+| `gui/web/hooks/useVisNetwork.js` | `create()`, `setNodes()`, `setEdges()`, physics control, events, stabilization |
+| `gui/web/components/NetworkGraph.js` | `init()`, `update()`, `refresh()`, `fit()`, particle overlay, highlights, smart placement |
 
 D3.js dependency completely removed; vis-network loaded from CDN.
 
 ## Current State (July 2026)
 
-- C++ exe builds and runs (static MinGW)
+- C++ exe builds and runs (static MinGW) — success status `STATUS=VALID`
 - GUI Tkinter app works (register + verify tabs)
 - Web dashboard serves at `http://localhost:8080` via `python gui/vis_server.py`
 - Web Register flow works end-to-end (stamp → encrypt → blockchain)
 - Blockchain nodes run on ports 8545-8559 (3-node consortium + optional extras)
-- Graph uses **vis-network** with physics simulation, flowing particles, state change animations
+- Graph uses **vis-network** with ForceAtlas2 physics, flowing particles, state change animations
+- **Raft stability improved**: successor gets 3s head start, election_in_progress prevents competing elections, pre-vote detects higher terms, non-successors extend timeout during election
+- **VisServer hardened**: 6-failure threshold, election-aware removal prevention, auto-reinsertion of recovered nodes
+- **UI redesigned**: glass morphism, ambient glows, terminal-style logs (scrollbar hidden), smooth micro-interactions throughout
 
 ## Known Issues / Edge Cases
 
@@ -125,7 +178,6 @@ D3.js dependency completely removed; vis-network loaded from CDN.
 - `vis_server.py` imports `pdf_secure`/`scdv_core` via `sys.path.insert(0, ...)` — fragile path hack
 - No authentication on web dashboard (anyone can upload)
 - Secrets (`MASTER_KEY`, `CAMPUS_SIGNING_KEY`) still use dev defaults
-- vis-network canvas overlay may have coordinate mismatch at extreme zoom levels
 
 ## Next Steps (Suggested)
 

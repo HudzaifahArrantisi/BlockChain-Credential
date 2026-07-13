@@ -102,6 +102,7 @@ def poll_nodes():
                 NODE_FAIL_COUNT[port] = 0
                 nid = info.get("node_id", f"node_{port}")
                 nid_short = nid[:12] + "..." if len(nid) > 15 else nid
+                in_election = info.get("election_in_progress", False)
                 nodes_data.append({
                     "port": port,
                     "label": label,
@@ -113,6 +114,7 @@ def poll_nodes():
                     "leader_id": info.get("leader_id", ""),
                     "listener": info.get("listener", f"0.0.0.0:{port}"),
                     "alive": True,
+                    "election_in_progress": in_election,
                 })
                 ts = time.strftime("%H:%M:%S")
                 role = info.get("role", "?")
@@ -127,14 +129,24 @@ def poll_nodes():
             else:
                 fail_count = NODE_FAIL_COUNT.get(port, 0) + 1
                 NODE_FAIL_COUNT[port] = fail_count
-                if fail_count >= 3:
+
+        # Determine if any node is currently in an election
+        any_election = any(n.get("election_in_progress", False) for n in nodes_data)
+
+        # During an election storm, nodes may briefly not respond.
+        # Never remove nodes while an election is in progress — they'll
+        # come back once a new leader is settled. Only remove after
+        # 6 consecutive failures AND no election activity anywhere.
+        if not any_election:
+            for port, cnt in list(NODE_FAIL_COUNT.items()):
+                if cnt >= 6 and port not in [n["port"] for n in nodes_data]:
                     to_remove.append(port)
 
         for port in to_remove:
             lbl = ACTIVE_NODES.pop(port, None)
             NODE_FAIL_COUNT.pop(port, None)
             if lbl:
-                print(f"[VIS] Node offline (3 failures): {lbl}:{port}")
+                print(f"[VIS] Node offline (6 failures): {lbl}:{port}")
 
         NODE_STATE = nodes_data
 

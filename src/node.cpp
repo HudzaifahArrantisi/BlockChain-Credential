@@ -41,9 +41,9 @@ static const int HTTP_BUFFER_SIZE = 65536;
 // SUCCESSOR_STEP_MS. All are >> the 400ms heartbeat, so a live leader never
 // triggers a false election. FRESH_START_* is used before any leader exists.
 static const int SUCCESSOR_BASE_MS = 3000;
-static const int SUCCESSOR_STEP_MS = 1000;
+static const int SUCCESSOR_STEP_MS = 3000;
 static const int FRESH_START_MIN_MS = 3000;
-static const int FRESH_START_MAX_MS = 6000;
+static const int FRESH_START_MAX_MS = 8000;
 
 static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
 
@@ -789,6 +789,16 @@ void ConsensusNode::run_consensus_loop() {
         switch (role.load()) {
             case NodeRole::FOLLOWER: {
                 if (elapsed > cached_election_timeout) {
+                    // If an election is already in progress and we're NOT the
+                    // designated successor, wait for that node to finish instead
+                    // of starting a competing election.
+                    if (election_in_progress.load() && !am_i_successor()) {
+                        std::cout << "[NODE " << node_id << "] Election in progress"
+                                  << " — extending timeout (not successor)" << std::endl;
+                        last_heartbeat_time.store(now);
+                        cached_election_timeout = compute_election_timeout() + 5000;
+                        break;
+                    }
                     // Leader appears dead — remember it so we can compute the
                     // successor, flag the election, then run for office.
                     if (has_active_leader.load() && !leader_id.empty()) {
@@ -894,13 +904,19 @@ ConsensusNode::handle_request_vote(const RequestVoteArgs& args) {
     // Pre-vote is also handled via this RPC
     // In the actual handler, we check for pre_vote in handle_request
 
+    // An election is happening — reset election timer so we don't start
+    // a competing election while this one is in progress.
+    election_in_progress.store(true);
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    last_heartbeat_time.store(now);
+
     if (voted_for.empty() || voted_for == args.candidate_id) {
         int64_t my_last = blockchain.chain_length();
         if (args.last_log_index >= my_last - 1) {
             voted_for = args.candidate_id;
             result.vote_granted = true;
-            last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()).count());
+            last_heartbeat_time.store(now);
         }
     }
 
@@ -976,9 +992,11 @@ void ConsensusNode::request_votes() {
 
     // Pre-vote check: skip election if we can't get enough pre-votes
     if (!request_pre_vote()) {
-        // Pre-vote failed — reset election timer and stay candidate
-        last_heartbeat_time.store(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count());
+        // Pre-vote failed — step down to follower. Another node is better
+        // positioned (higher term, more up-to-date log, or already won).
+        if (role.load() == NodeRole::CANDIDATE) {
+            become_follower(current_term.load());
+        }
         return;
     }
 
@@ -1240,12 +1258,24 @@ bool ConsensusNode::request_pre_vote() {
         if (!resp.empty()) {
             try {
                 json j = json::parse(resp);
+                // If any peer has a higher term, we're outdated — step down
+                int64_t peer_term = j.value("term", 0LL);
+                if (peer_term > term) {
+                    std::cout << "[NODE " << node_id << "] Pre-vote: peer has term "
+                              << peer_term << " > " << term << " — stepping down"
+                              << std::endl;
+                    become_follower(peer_term);
+                    return false;
+                }
                 if (j.value("vote_granted", false)) {
                     grants++;
                 }
             } catch (...) {}
         }
     }
+
+    // If we stepped down due to higher term, pre-vote fails
+    if (role.load() != NodeRole::CANDIDATE) return false;
 
     int needed = (current_peers.size() + 1) / 2 + 1;
     if (needed < 2) needed = 2;
